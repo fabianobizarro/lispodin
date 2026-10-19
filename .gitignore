@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+*.exe
+*.bin
+*.o
+*.obj
+*.pdb
+
+# macOS
+.DS_Store
+
+# Zed
+.zed/state/
+
+debug_build*
+
+.zed/
