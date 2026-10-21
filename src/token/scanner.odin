@@ -1,7 +1,6 @@
 #+private
 package token
 
-import token "../token"
 import "core:strconv"
 import "core:strings"
 import "core:text/match"
@@ -60,15 +59,15 @@ scan_token :: proc() {
 		add_token({type = .PLUS, lexeme = "+"})
 	case '*':
 		add_token({type = .STAR, lexeme = "*"})
-	case '\t':
-	case ' ':
-	case '\r':
 	case '\n':
 		_line += 1
 		break
+	case '\t':
+	case ' ':
+	case '\r':
+		{}
 	case '"':
-	// read string
-
+		read_string()
 	case:
 		if match.is_digit(char) do read_number()
 		else if match.is_alpha(char) do read_identifier()
@@ -105,4 +104,22 @@ read_identifier :: proc() {
 	if !ok do token_type = .IDENTIFIER
 
 	add_token({type = token_type, lexeme = text})
+}
+
+
+read_string :: proc() {
+
+	for peek() != '"' && !is_at_end() {
+		if peek() == '\n' do _line += 1
+		advance()
+	}
+
+	if is_at_end() {
+		panic("Unterminaed string")
+	}
+
+	advance()
+
+	value := _source[_start:_current] // todo: test
+	add_token({type = .STRING, literal = value, lexeme = value})
 }

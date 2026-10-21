@@ -6,40 +6,27 @@ import tk "../token"
 Token :: tk.Token
 
 Expression :: union {
-	List,
 	Literal,
-	Define,
-	Procedure,
 	^Variable,
+	FunctionCall,
 }
 
-// (....)
-List :: struct {
-	expressions: []Expression,
-}
-
-LiteralKind :: union {
-	f32,
-	string,
-}
-
+// 1 2 3 4
+// "string content"
 Literal :: struct {
-	value: Maybe(LiteralKind),
+	value: Maybe(tk.LiteralKind),
 }
 
-// (def age 1)
-Define :: struct {
+// (... x)
+//      ˆ
+Variable :: struct {
 	name: string,
 }
 
-// (x)
-Variable :: struct {
-	name:  string,
-	value: ^Expression,
-}
-
-// (proc x y z)
-Procedure :: struct {
+// (proc_name arg1 arg2)
+// (proc_name arg1 arg2)
+// (+ 1 1)
+FunctionCall :: struct {
 	identifier: Token,
 	args:       []Expression,
 }

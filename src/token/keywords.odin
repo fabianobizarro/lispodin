@@ -2,5 +2,9 @@
 package token
 
 Keywords := map[string]TokenType {
-	"print" = .PRINT,
+	"print"  = .PRINT,
+	"def"    = .DEF,
+	"lambda" = .LAMBDA,
+	"true"   = .TRUE,
+	"false"  = .FALSE,
 }

@@ -11,11 +11,14 @@ TokenType :: enum {
 	// LITERALS
 	STRING,
 	NUMBER,
+	TRUE,
+	FALSE,
 	IDENTIFIER,
 
 	// KEYWORDS
-	// DEF,
+	DEF,
 	PRINT,
+	LAMBDA,
 	EOF,
 }
 
@@ -23,11 +26,11 @@ TokenType :: enum {
 Token :: struct {
 	type:    TokenType,
 	lexeme:  string,
-	literal: Maybe(LiteralType),
+	literal: Maybe(LiteralKind),
 }
 
-
-LiteralType :: union {
+LiteralKind :: union {
 	f32,
 	string,
+	bool,
 }
