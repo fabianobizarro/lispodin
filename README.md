@@ -15,11 +15,12 @@ Early prototype. The lexer, parser, and evaluator exist, and nested arithmetic p
 
 ## Todo
 
-- [ ] `>=` operator
-- [ ] `<=` operator
-- [ ] `==` operator
-- [ ] Variable declaration (environment)
-- [ ] Variable retrieval
+- `>=` operator
+- `<=` operator
+- `==` operator
+- lambda
+- function call
+
 
 ## Language
 
