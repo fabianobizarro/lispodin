@@ -91,6 +91,7 @@ parse_statement :: proc() -> stmt.Statement {
 parse_define_statement :: proc() -> stmt.Define {
 	consume(.LEFT_PAREN, "Expected '(' at the beginning of the list")
 
+	identifier := advance()
 	name := advance()
 	value := parse_expression()
 
@@ -132,10 +133,18 @@ parse_expression :: proc() -> exp.Expression {
 
 	if match(.LEFT_PAREN) do return parse_function_call()
 	else if match(.NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression()
+	else if match(.IDENTIFIER) do return parse_variable_expression()
 
 	panic("Unexpected Expression")
 }
 
+
+parse_variable_expression :: proc() -> exp.Variable {
+
+	name := previous()
+
+	return {name = name.lexeme}
+}
 
 parse_literal_expression :: proc() -> exp.Literal {
 

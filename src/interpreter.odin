@@ -8,6 +8,9 @@ import tk "token"
 
 Result :: Maybe(tk.LiteralKind)
 
+@(private)
+_env: Environment
+
 evaluate :: proc(statements: []stmt.Statement) -> Result {
 	assert(len(statements) > 0)
 
@@ -29,8 +32,20 @@ evaluate_statement :: proc(statement: stmt.Statement) -> Result {
 	case stmt.Expression:
 		return evaluate_expression(t.expression)
 	case stmt.Define:
-	case:
+		return evaluate_define(t)
 	}
+
+	return nil
+}
+
+
+evaluate_define :: proc(def: stmt.Define) -> Result {
+
+	identifier := def.name.lexeme
+
+	value := evaluate_expression(def.value).?
+
+	_env[identifier] = value
 
 	return nil
 }
@@ -50,7 +65,8 @@ evaluate_expression :: proc(expression: exp.Expression) -> Result {
 	switch kind in expression {
 	case exp.Literal:
 		return evaluate_literal(kind)
-	case ^exp.Variable:
+	case exp.Variable:
+		return evaluate_variable(kind)
 	case exp.FunctionCall:
 		return evaluate_function_call(kind)
 	case:
@@ -58,6 +74,17 @@ evaluate_expression :: proc(expression: exp.Expression) -> Result {
 	}
 
 	return nil
+}
+
+
+evaluate_variable :: proc(var: exp.Variable) -> Result {
+
+	val, ok := _env[var.name]
+
+
+	if !ok do fmt.panicf("Variable %s not found", var.name)
+
+	return val
 }
 
 evaluate_function_call :: proc(call: exp.FunctionCall) -> Result {
@@ -122,82 +149,6 @@ evaluate_math_operation :: proc(call: exp.FunctionCall) -> Result {
 
 }
 
-
-//
-// evaluate_list :: proc(list: exp.List) -> Result {
-// 	for expression in list.expressions {
-// 		evaluate_expression(expression)
-// 	}
-// 	return nil
-// }
-//
 evaluate_literal :: proc(literal: exp.Literal) -> Result {
 	return literal.value
 }
-//
-// evaluate_procedure :: proc(procedure: exp.Procedure) -> Result {
-//
-// 	fmt.println("procedure ", procedure.identifier.lexeme)
-// 	#partial switch procedure.identifier.type {
-//
-// 	case .PLUS:
-// 		sum_args := make([dynamic]f32)
-// 		for arg in procedure.args {
-// 			value := evaluate_expression(arg).?
-// 			switch t in value {
-// 			case f32:
-// 				append(&sum_args, t)
-// 			case string:
-// 			case:
-// 				panic("Type not supportted for sum operation")
-// 			}
-//
-// 		}
-//
-// 		result := func.sum(..sum_args[:])
-// 		return result
-// 	case .MINUS:
-// 		sum_args := make([dynamic]f32)
-// 		for arg in procedure.args {
-// 			value := evaluate_expression(arg).?
-// 			switch t in value {
-// 			case f32:
-// 				append(&sum_args, t)
-// 			case string:
-// 			case:
-// 				panic("Type not supportted for sum operation")
-// 			}
-//
-// 		}
-//
-// 		result := func.subtract(..sum_args[:])
-// 		return result
-// 	case .SLASH:
-// 	case .STAR:
-// 	case .PRINT:
-// 		return evaluate_print(procedure)
-// 	case:
-// 		panic("Not implemented")
-// 	}
-//
-// 	return nil
-// }
-//
-// evaluate_variable :: proc(list: exp.Variable) -> Result {
-// 	return nil
-// }
-//
-// evaluate_define :: proc(list: exp.Define) -> Result {
-// 	return nil
-// }
-//
-// evaluate_print :: proc(call: exp.Procedure) -> Result {
-//
-// 	fmt.println(call.identifier)
-// 	for e in call.args {
-// 		value := evaluate_expression(e)
-// 		fmt.println(value)
-// 	}
-//
-// 	return nil
-// }

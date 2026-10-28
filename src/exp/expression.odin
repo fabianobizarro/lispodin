@@ -7,7 +7,7 @@ Token :: tk.Token
 
 Expression :: union {
 	Literal,
-	^Variable,
+	Variable,
 	FunctionCall,
 }
 
