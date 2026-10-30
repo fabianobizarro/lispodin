@@ -1,6 +1,9 @@
 package main
 
+import "base:runtime"
+import "core:flags"
 import "core:fmt"
+import "core:os"
 import parser "parser"
 import token "token"
 
@@ -9,20 +12,70 @@ import token "token"
 // program :: "(print (+ 10 10))\n(print (+ 20 10))"
 // program :: "(print (+ 10 (* 2 3)))"
 // program :: "(def n 10)(def b 20)(print (+ n b))"
-program :: "(def n (+ 1 1))(def b 20)(print (+ n b))"
+// program :: "(def n (+ 1 1))(def b 20)(print (+ n b))"
 
 
-debug_flag: bool = true
+@(private)
+debug_flag: bool = false
+
+my_custom_type_setter :: proc(
+	data: rawptr,
+	data_type: typeid,
+	unparsed_value: string,
+	args_tag: string,
+) -> (
+	error: string,
+	handled: bool,
+	alloc_error: runtime.Allocator_Error,
+) {
+	fmt.println("??")
+	fmt.println(data)
+	fmt.println(data_type)
+	fmt.println(unparsed_value)
+	fmt.println(args_tag)
+
+	return
+}
 
 main :: proc() {
+	length := len(os.args[1:])
 
+	if length > 1 {
+		fmt.print("Usage: ", os.args[0], "[script]")
+		os.exit(64)
+	} else if length == 1 {
+		run_file(os.args[1])
+	} else {
+		repl()
+	}
+}
+
+repl :: proc() {
+	fmt.println("Not implemented")
+	os.exit(1)
+}
+
+
+run_file :: proc(file_path: string) {
+	data, err := os.read_entire_file(file_path, context.allocator)
+	if err != nil {
+		fmt.println(err)
+		return
+	}
+
+	defer delete(data, context.allocator)
+
+	run(string(data))
+}
+
+run :: proc(source: string) {
 	if debug_flag {
 
-		fmt.println("Input: ", program)
+		fmt.println("Input: ", source)
 		fmt.println()
 	}
 
-	tokens := token.tokenize(program)
+	tokens := token.tokenize(source)
 	defer delete(tokens)
 
 	if debug_flag {
@@ -46,6 +99,4 @@ main :: proc() {
 
 	result, ok := evaluate(ast).?
 	if ok do fmt.println(result)
-
-
 }
