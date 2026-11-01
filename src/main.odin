@@ -1,22 +1,26 @@
 package main
 
 import "base:runtime"
-import "core:flags"
 import "core:fmt"
 import "core:os"
-import parser "parser"
-import token "token"
+
+import "core"
+import atom "core/atom"
+import parser "core/parser"
+import scanner "core/scanner"
+
 
 // program :: "(begin (define r 10) (* pi (* r r)))"
 // program :: "(+ 10 10)"
 // program :: "(print (+ 10 10))\n(print (+ 20 10))"
 // program :: "(print (+ 10 (* 2 3)))"
 // program :: "(def n 10)(def b 20)(print (+ n b))"
-// program :: "(def n (+ 1 1))(def b 20)(print (+ n b))"
+// program :: "(lambda () (+ 10 10))"
+program :: "(def myfunc (lambda () (+ 10 10)))\n(myfunc)"
 
 
 @(private)
-debug_flag: bool = false
+debug_flag: bool = true
 
 my_custom_type_setter :: proc(
 	data: rawptr,
@@ -46,7 +50,8 @@ main :: proc() {
 	} else if length == 1 {
 		run_file(os.args[1])
 	} else {
-		repl()
+		run(program)
+		// repl()
 	}
 }
 
@@ -75,7 +80,7 @@ run :: proc(source: string) {
 		fmt.println()
 	}
 
-	tokens := token.tokenize(source)
+	tokens := scanner.tokenize(source)
 	defer delete(tokens)
 
 	if debug_flag {
@@ -97,6 +102,27 @@ run :: proc(source: string) {
 		fmt.println("Evaluation: ")
 	}
 
-	result, ok := evaluate(ast).?
+	result, ok := core.evaluate(ast).?
 	if ok do fmt.println(result)
+
+	if debug_flag {
+		print_environment(core.get_current_env())
+	}
+}
+
+
+print_environment :: proc(env: core.Environment) {
+
+	fmt.println("\nEnvironment:")
+	if len(env) == 0 do fmt.println("<empty>")
+
+	for k in env {
+		switch t in env[k] {
+		case atom.LiteralValue:
+			fmt.printfln("%s => %s", k, t)
+		case atom.LambdaFunction:
+			fmt.printfln("%s => %s", k, t)
+		}
+	}
+	// for k, v in env do fmt.printfln(k, v)
 }

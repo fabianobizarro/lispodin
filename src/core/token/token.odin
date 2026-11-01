@@ -1,5 +1,7 @@
 package token
 
+import "../atom"
+
 TokenType :: enum {
 	LEFT_PAREN,
 	RIGHT_PAREN,
@@ -22,15 +24,10 @@ TokenType :: enum {
 	EOF,
 }
 
-
 Token :: struct {
 	type:    TokenType,
 	lexeme:  string,
-	literal: Maybe(LiteralKind),
+	literal: Maybe(LiteralValue),
 }
 
-LiteralKind :: union {
-	f32,
-	string,
-	bool,
-}
+LiteralValue :: atom.LiteralValue

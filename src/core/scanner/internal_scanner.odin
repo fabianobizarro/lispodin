@@ -1,9 +1,14 @@
 #+private
-package token
+package scanner
+
+import core "../"
+import t "../token"
 
 import "core:strconv"
 import "core:strings"
 import "core:text/match"
+
+Token :: t.Token
 
 is_digit :: match.is_digit
 
@@ -16,7 +21,6 @@ _line: int = 1
 
 _source: string
 tokens: [dynamic]Token
-
 
 is_at_end :: proc() -> bool {
 	return _current >= len(_source)
@@ -100,7 +104,7 @@ read_identifier :: proc() {
 	for match.is_alpha(peek()) do advance()
 
 	text := _source[_start:_current]
-	token_type, ok := Keywords[text]
+	token_type, ok := core.Keywords[text]
 	if !ok do token_type = .IDENTIFIER
 
 	add_token({type = token_type, lexeme = text})

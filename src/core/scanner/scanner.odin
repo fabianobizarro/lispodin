@@ -1,4 +1,4 @@
-package token
+package scanner
 
 tokenize :: proc(source: string) -> []Token {
 	_current = 0

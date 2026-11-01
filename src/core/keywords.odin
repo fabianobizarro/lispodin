@@ -1,7 +1,9 @@
 #+feature dynamic-literals
-package token
+package core
 
-Keywords := map[string]TokenType {
+import t "token"
+
+Keywords := map[string]t.TokenType {
 	"print"  = .PRINT,
 	"def"    = .DEF,
 	"lambda" = .LAMBDA,
