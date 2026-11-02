@@ -1,18 +1,11 @@
-package core
+package interpreter
 
-import func "builtin_functions"
 import "core:fmt"
-import tk "token"
 
-import "atom"
+import lf "../functions"
+import func "../functions/builtin"
 
-import lf "builtin_functions/lambda"
-
-
-Result :: Maybe(atom.Atom)
-
-@(private)
-_env: Environment
+Result :: Maybe(Atom)
 
 get_current_env :: proc() -> Environment {
 	return _env
@@ -45,12 +38,6 @@ evaluate_statement :: proc(statement: Statement) -> Result {
 	return nil
 }
 
-evaluate_lambda_expression :: proc(lambda: LambdaExpression) -> lf.LambdaFunction {
-
-	// _env[lambda.]
-
-	return {arity = u8(len(lambda.params))}
-}
 
 evaluate_define :: proc(def: DefineStatement) -> Result {
 
@@ -58,7 +45,7 @@ evaluate_define :: proc(def: DefineStatement) -> Result {
 
 	value := evaluate_expression(def.value)
 
-	_env[identifier] = atom.Atom(value.?)
+	_env[identifier] = Atom(value.?)
 
 	return nil
 }
@@ -99,16 +86,42 @@ evaluate_variable :: proc(var: VariableExpression) -> Result {
 	return Result(val)
 }
 
-evaluate_lamba_call :: proc(call: LambdaCallExpression) -> Result {
+evaluate_lambda_expression :: proc(lambda: LambdaExpression) -> LambdaFunction {
 
-	if builtin_math_function(call.identifier.type) do return evaluate_math_operation(call)
-
-	panic("not implemented")
-
-	// return nil
+	return lf.create_lambda_function(lambda)
 }
 
-builtin_math_function :: proc(t: tk.TokenType) -> bool {
+evaluate_lamba_call :: proc(call: LambdaCallExpression) -> Result {
+
+	// depretated - remove in the future
+	if builtin_math_function(call.identifier.type) do return evaluate_math_operation(call)
+
+	func, ok := _env[call.identifier.lexeme].(LambdaFunction)
+	if !ok do fmt.panicf("Can only call lambda functions. %s does not seem to be a lambda.", call.identifier.lexeme)
+
+	if u8(len(call.args)) != func.arity {
+		fmt.panicf(
+			"%s: Expected %d arguments but got %d.",
+			call.identifier,
+			func.arity,
+			len(call.args),
+		)
+	}
+
+	args := make([dynamic]LiteralValue)
+	for arg in call.args {
+		a, ok := evaluate_expression(arg).?.(LiteralValue)
+		if !ok do panic("Expected a literal value or a lambda call.")
+		append(&args, a)
+	}
+
+	// call function
+	return func.call(&func, args[:], evaluate)
+}
+
+
+// deprecated
+builtin_math_function :: proc(t: TokenType) -> bool {
 	switch t {
 	case .PLUS:
 		return true
@@ -135,33 +148,33 @@ builtin_math_function :: proc(t: tk.TokenType) -> bool {
 	return false
 }
 
-
+// @deprecate
 evaluate_math_operation :: proc(call: LambdaCallExpression) -> Result {
 	// args := make([dynamic]Maybe(LiteralKind))
-	args := make([dynamic]atom.LiteralValue)
+	args := make([dynamic]LiteralValue)
 	// defer delete(args)
 
 	for arg in call.args {
 		value := evaluate_expression(arg)
 
-		lambda, is_lambda := value.?.(atom.LambdaFunction)
+		lambda, is_lambda := value.?.(LambdaFunction)
 		if is_lambda {
 			// TODO: call the lambda
 			panic("a")
 		}
-		append(&args, value.?.(atom.LiteralValue))
+		append(&args, value.?.(LiteralValue))
 
 	}
 
 	#partial switch call.identifier.type {
 	case .PLUS:
-		return tk.LiteralValue(func.sum(args[:]))
+		return LiteralValue(func.sum(args[:]))
 	case .MINUS:
-		return tk.LiteralValue(func.subtract(args[:]))
+		return LiteralValue(func.subtract(args[:]))
 	case .STAR:
-		return tk.LiteralValue(func.multiply(args[:]))
+		return LiteralValue(func.multiply(args[:]))
 	case .SLASH:
-		return tk.LiteralValue(func.divide(args[:]))
+		return LiteralValue(func.divide(args[:]))
 	case:
 		panic("Operation not supported")
 	}
@@ -171,5 +184,5 @@ evaluate_math_operation :: proc(call: LambdaCallExpression) -> Result {
 }
 
 evaluate_literal :: proc(literal: LiteralExpression) -> Result {
-	return atom.LiteralValue(literal.value.?)
+	return LiteralValue(literal.value.?)
 }

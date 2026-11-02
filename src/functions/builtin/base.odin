@@ -1,7 +1,7 @@
 package builtin_functions
 
 
-import "../atom"
+import atom "../../core"
 
 Literal :: atom.Atom
 LiteralValue :: atom.LiteralValue

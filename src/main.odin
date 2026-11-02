@@ -4,10 +4,10 @@ import "base:runtime"
 import "core:fmt"
 import "core:os"
 
-import "core"
-import atom "core/atom"
-import parser "core/parser"
-import scanner "core/scanner"
+import core "core"
+import interpreter "interpreter"
+import parser "parser"
+import scanner "scanner"
 
 
 // program :: "(begin (define r 10) (* pi (* r r)))"
@@ -16,7 +16,7 @@ import scanner "core/scanner"
 // program :: "(print (+ 10 (* 2 3)))"
 // program :: "(def n 10)(def b 20)(print (+ n b))"
 // program :: "(lambda () (+ 10 10))"
-program :: "(def myfunc (lambda () (+ 10 10)))\n(myfunc)"
+program :: "(def myfunc (lambda () (+ 10 10)))\n(print (myfunc))"
 
 
 @(private)
@@ -102,11 +102,12 @@ run :: proc(source: string) {
 		fmt.println("Evaluation: ")
 	}
 
-	result, ok := core.evaluate(ast).?
+	result, ok := interpreter.evaluate(ast).?
 	if ok do fmt.println(result)
 
+
 	if debug_flag {
-		print_environment(core.get_current_env())
+		print_environment(interpreter.get_current_env())
 	}
 }
 
@@ -118,10 +119,10 @@ print_environment :: proc(env: core.Environment) {
 
 	for k in env {
 		switch t in env[k] {
-		case atom.LiteralValue:
+		case core.LiteralValue:
 			fmt.printfln("%s => %s", k, t)
-		case atom.LambdaFunction:
-			fmt.printfln("%s => %s", k, t)
+		case core.LambdaFunction:
+			fmt.printfln("%s => lambda function", k)
 		}
 	}
 	// for k, v in env do fmt.printfln(k, v)

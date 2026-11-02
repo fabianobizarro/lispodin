@@ -1,7 +1,5 @@
 package core
 
-import t "token"
-
 Statement :: union {
 	DefineStatement,
 	PrintStatement,
@@ -11,13 +9,13 @@ Statement :: union {
 // variable define
 // (def a 1)
 DefineStatement :: struct {
-	name:  t.Token,
+	name:  Token,
 	value: Expression,
 }
 
 // (print x)
 PrintStatement :: struct {
-	token:     t.Token,
+	token:     Token,
 	arguments: []Expression,
 }
 

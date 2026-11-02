@@ -1,12 +1,11 @@
 #+private
 package parser
 
-import core "../"
-import t "../token"
+import core "../core"
 import "core:fmt"
 
-Token :: t.Token
-TokenType :: t.TokenType
+Token :: core.Token
+TokenType :: core.TokenType
 
 Statement :: core.Statement
 DefineStatement :: core.DefineStatement

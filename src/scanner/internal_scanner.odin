@@ -1,14 +1,13 @@
 #+private
 package scanner
 
-import core "../"
-import t "../token"
+import core "../core"
 
 import "core:strconv"
 import "core:strings"
 import "core:text/match"
 
-Token :: t.Token
+Token :: core.Token
 
 is_digit :: match.is_digit
 

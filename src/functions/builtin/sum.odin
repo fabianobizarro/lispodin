@@ -1,6 +1,5 @@
 package builtin_functions
 
-import tk "../../core/token"
 import "core:fmt"
 // Sum opreation
 //

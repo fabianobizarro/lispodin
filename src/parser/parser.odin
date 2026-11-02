@@ -12,3 +12,5 @@ parse :: proc(tokens: []Token) -> []Statement {
 
 	return statements[:]
 }
+
+parse_teste :: proc() {}

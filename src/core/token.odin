@@ -1,6 +1,4 @@
-package token
-
-import "../atom"
+package core
 
 TokenType :: enum {
 	LEFT_PAREN,
@@ -29,5 +27,3 @@ Token :: struct {
 	lexeme:  string,
 	literal: Maybe(LiteralValue),
 }
-
-LiteralValue :: atom.LiteralValue

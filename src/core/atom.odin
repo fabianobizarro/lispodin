@@ -1,8 +1,4 @@
-package odin
-
-import "../builtin_functions/lambda"
-
-LambdaFunction :: lambda.LambdaFunction
+package core
 
 LiteralValue :: union {
 	f32,

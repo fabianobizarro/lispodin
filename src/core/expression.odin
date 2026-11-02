@@ -1,7 +1,5 @@
 package core
 
-import tk "token"
-
 Expression :: union {
 	LiteralExpression,
 	VariableExpression,
@@ -12,7 +10,7 @@ Expression :: union {
 // 1 2 3 4
 // "string content"
 LiteralExpression :: struct {
-	value: Maybe(tk.LiteralValue),
+	value: Maybe(LiteralValue),
 }
 
 // (... x)
@@ -25,13 +23,13 @@ VariableExpression :: struct {
 // (proc_name arg1 arg2)
 // (+ 1 1)
 LambdaCallExpression :: struct {
-	identifier: tk.Token,
+	identifier: Token,
 	args:       []Expression,
 }
 
 
 // (lamba x y z)
 LambdaExpression :: struct {
-	params: []tk.Token,
+	params: []Token,
 	body:   []Statement,
 }
