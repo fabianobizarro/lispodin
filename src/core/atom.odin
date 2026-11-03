@@ -7,8 +7,7 @@ LiteralValue :: union {
 }
 
 /*
-Represents the smallest piece of value possible in the language
-
+Represents the smallest piece of value possible in the language \
 A literal value (f32, string, bool) or a lambda expression
 */
 Atom :: union {

@@ -2,10 +2,9 @@
 package interpreter
 
 import "../core"
+import env "../environment"
 
 Atom :: core.Atom
-
-Environment :: core.Environment
 
 Token :: core.Token
 TokenType :: core.TokenType
@@ -20,7 +19,4 @@ LiteralExpression :: core.LiteralExpression
 VariableExpression :: core.VariableExpression
 LambdaCallExpression :: core.LambdaCallExpression
 LambdaExpression :: core.LambdaExpression
-
 LambdaFunction :: core.LambdaFunction
-
-_env: Environment

@@ -1,10 +1,12 @@
 package main
 
 import "base:runtime"
+import "core:debug/trace"
 import "core:fmt"
 import "core:os"
 
 import core "core"
+import env "environment"
 import interpreter "interpreter"
 import parser "parser"
 import scanner "scanner"
@@ -25,6 +27,17 @@ debug_flag: bool = true
 
 
 main :: proc() {
+
+	track: trace.Tracking_Allocator
+	trace.tracking_allocator_init(&track, context.allocator)
+	defer trace.tracking_allocator_destroy(&track)
+
+	context.assertion_failure_proc = trace.assertion_failure_proc
+
+	_main()
+}
+
+_main :: proc() {
 	length := len(os.args[1:])
 
 	if length > 1 {
@@ -57,6 +70,18 @@ run_file :: proc(file_path: string) {
 }
 
 run :: proc(source: string) {
+
+	global_env: core.RuntimeEnvironment
+	defer env.destroy(&global_env)
+
+	initialize_global_env(&global_env)
+
+	if debug_flag {
+		fmt.println("\nGlobal Env")
+		print_environment(&global_env)
+		fmt.println()
+	}
+
 	if debug_flag {
 
 		fmt.println("Input: ", source)
@@ -84,25 +109,24 @@ run :: proc(source: string) {
 
 	}
 
-	result, ok := interpreter.evaluate(ast).?
+	result, ok := interpreter.evaluate(ast, &global_env).?
 
 	if debug_flag do fmt.println("Evaluation: ")
 	if ok do fmt.println(result)
 
 
 	if debug_flag {
-		print_environment(interpreter.get_current_env())
+		print_environment(&global_env)
 	}
 }
 
 
-print_environment :: proc(env: core.Environment) {
+print_environment :: proc(e: ^core.RuntimeEnvironment) {
 
-	fmt.println("\nEnvironment:")
-	if len(env) == 0 do fmt.println("<empty>")
+	if len(e.variables) == 0 do fmt.println("<empty>")
 
-	for k in env {
-		switch t in env[k] {
+	for k in e.variables {
+		switch t in e.variables[k] {
 		case core.LiteralValue:
 			fmt.printfln("%s => %s", k, t)
 		case core.LambdaFunction:
