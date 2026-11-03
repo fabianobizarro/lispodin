@@ -83,6 +83,8 @@ consume :: proc(type: TokenType, error_message: string) -> Token {
 
 parse_statement :: proc() -> Statement {
 
+	p := peek()
+	n := peek_next()
 	if check_next(.PRINT) do return parse_print_statement()
 	else if check_next(.DEF) do return parse_define_statement()
 	else do return parse_expression_statement()
@@ -90,9 +92,9 @@ parse_statement :: proc() -> Statement {
 
 parse_lambda_expression :: proc() -> LambdaExpression {
 
-	consume(.LEFT_PAREN, "Expected '(' at the beginning of the list")
+	// consume(.LEFT_PAREN, "Expected '(' at the beginning of the list")
 
-	lambda := advance()
+	lambda := previous()
 
 	params := make([dynamic]Token)
 	body := make([dynamic]Statement)
@@ -106,7 +108,7 @@ parse_lambda_expression :: proc() -> LambdaExpression {
 
 		if len(params) > MAX_PARAMS_SIZE do fmt.panicf("Can't have more than %d parameters.", MAX_PARAMS_SIZE)
 
-		append(&params, peek())
+		append(&params, advance())
 	}
 
 	consume(.RIGHT_PAREN, "Expected ')' at the beginning of the parameters list")
@@ -164,7 +166,9 @@ parse_expression_statement :: proc() -> ExpressionStatement {
 
 parse_expression :: proc() -> Expression {
 
-	if check_next(.LAMBDA) do return parse_lambda_expression()
+	t := peek()
+	pn := peek_next()
+	if match(.LAMBDA) do return parse_lambda_expression()
 	else if match(.LEFT_PAREN) do return parse_function_call()
 	else if match(.NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression()
 	else if match(.IDENTIFIER) do return parse_variable_expression()

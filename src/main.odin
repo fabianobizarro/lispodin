@@ -16,30 +16,13 @@ import scanner "scanner"
 // program :: "(print (+ 10 (* 2 3)))"
 // program :: "(def n 10)(def b 20)(print (+ n b))"
 // program :: "(lambda () (+ 10 10))"
-program :: "(def myfunc (lambda () (+ 10 10)))\n(print (myfunc))"
+// program :: "(def myfunc (lambda (a b) (+ a b)))\n(print (myfunc 1 1))"
+program :: "((lambda (a b) (+ a b)) 1 1)"
 
 
 @(private)
 debug_flag: bool = true
 
-my_custom_type_setter :: proc(
-	data: rawptr,
-	data_type: typeid,
-	unparsed_value: string,
-	args_tag: string,
-) -> (
-	error: string,
-	handled: bool,
-	alloc_error: runtime.Allocator_Error,
-) {
-	fmt.println("??")
-	fmt.println(data)
-	fmt.println(data_type)
-	fmt.println(unparsed_value)
-	fmt.println(args_tag)
-
-	return
-}
 
 main :: proc() {
 	length := len(os.args[1:])
@@ -99,10 +82,11 @@ run :: proc(source: string) {
 		for s in ast do fmt.println(s)
 		fmt.println()
 
-		fmt.println("Evaluation: ")
 	}
 
 	result, ok := interpreter.evaluate(ast).?
+
+	if debug_flag do fmt.println("Evaluation: ")
 	if ok do fmt.println(result)
 
 

@@ -96,20 +96,54 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression) -> Result {
 	// depretated - remove in the future
 	if builtin_math_function(call.identifier.type) do return evaluate_math_operation(call)
 
-	func, ok := _env[call.identifier.lexeme].(LambdaFunction)
-	if !ok do fmt.panicf("Can only call lambda functions. %s does not seem to be a lambda.", call.identifier.lexeme)
+	call_args := call.args
+	func: LambdaFunction
+	ok: bool
+	lambda: LambdaExpression
 
-	if u8(len(call.args)) != func.arity {
+
+	// check if the lambda function exists in env and the identifier is valid
+	if call.identifier.type == .IDENTIFIER && call.identifier.lexeme in _env {
+		func, ok = _env[call.identifier.lexeme].(LambdaFunction)
+		if !ok {
+			fmt.panicf(
+				"Can only call lambda functions. %s does not seem to be a lambda.",
+				call.identifier.lexeme,
+			)
+		}
+	} else if lambda, ok = call.args[0].(LambdaExpression); ok {
+		func = evaluate_lambda_expression(lambda)
+		call_args = call_args[1:] // remove the lambda definition from arguments list
+	} else {
+		fmt.panicf(
+			"First argument of the lambda call must be a lambda declaration.",
+			call.identifier.lexeme,
+		)
+	}
+
+	// // check if the first argument
+	// if lambda, ok = call.args[0].(LambdaExpression); ok {
+	// 	// first argument is a lambda expression, therefore we need to evaluate it
+	// 	func = evaluate_lambda_expression(lambda)
+	// } else if func, ok = _env[call.identifier.lexeme].(LambdaFunction); !ok {
+	// 	fmt.panicf(
+	// 		"Can only call lambda functions. %s does not seem to be a lambda.",
+	// 		call.identifier.lexeme,
+	// 	)
+	// }
+
+
+	if u8(len(call_args)) != func.arity {
 		fmt.panicf(
 			"%s: Expected %d arguments but got %d.",
 			call.identifier,
 			func.arity,
-			len(call.args),
+			len(call_args),
 		)
 	}
 
 	args := make([dynamic]LiteralValue)
-	for arg in call.args {
+	for arg in call_args {
 		a, ok := evaluate_expression(arg).?.(LiteralValue)
 		if !ok do panic("Expected a literal value or a lambda call.")
 		append(&args, a)
