@@ -1,6 +1,6 @@
 package token_tests
 
-import scan "../../src/token"
+import scanner "../../src/scanner"
 import "core:testing"
 
 @(test)
@@ -9,7 +9,7 @@ tokenize_test :: proc(t: ^testing.T) {
 	program := "(+ 1)"
 
 	// act
-	result := scan.tokenize(program)
+	result := scanner.tokenize(program)
 
 	// assert
 	testing.expect(t, result != nil)
