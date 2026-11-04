@@ -71,6 +71,7 @@ Requires the [Odin compiler](https://odin-lang.org/docs/install/) on `PATH`.
 
 ```sh
 make          # debug build -> build/lisp_odin
+make release  # optimized build -> build/lisp_odin
 make run      # odin run src
 make check    # type-check only
 make lint     # odinfmt check, then odin check -vet
@@ -84,11 +85,19 @@ make clean    # remove build/
 
 - **Lint** — `make lint`
 - **Test** — `make test`
-- **Build** — `make build` on macOS (arm64), then uploads `build/lisp_odin`
+- **Build** — `make release` on macOS (arm64), Linux (x64), and Windows (x64), then uploads the binaries as artifacts
 
-The compiler is pinned to the `dev-2026-10` release, matching the local toolchain. Add another OS by extending the build matrix.
+The compiler is pinned to the `dev-2026-10` release, matching the local toolchain.
 
-`make build` and `make debug` both compile with `-debug` into `build/lisp_odin`.
+`make build` compiles with `-debug` into `build/lisp_odin`; `make release` builds with `-o:speed`.
+
+## Releases
+
+Pushing a tag matching `vN.N.N` (for example, `v0.1.0`) triggers the same lint/test/build pipeline and then creates a GitHub Release with the compiled binaries attached:
+
+- `lisp_odin-macos-arm64`
+- `lisp_odin-linux-x64`
+- `lisp_odin-windows-x64.exe`
 
 Change the `program` string in `src/main.odin`, then `make run`, to try a different snippet. The binary prints the source, the token list, the AST, and the evaluation result.
 

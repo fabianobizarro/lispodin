@@ -73,6 +73,12 @@ This file tracks pending tasks for the Lisp interpreter. Items map to the limita
   - Files: `tests/token/scanner_tests.odin`
   - Coverage: numbers, strings, identifiers, keywords, operators, whitespace, newlines.
 
+## Infrastructure
+
+- [x] **Set up CI/CD pipeline with release binaries**
+  - Files: `.github/workflows/ci.yml`, `Makefile`, `README.md`
+  - Done: every push/PR now runs lint, tests, and cross-platform builds; tags matching `vN.N.N` create GitHub Releases with attached binaries.
+
 ## Known Limitations (No Tasks)
 
 - **No lists or pairs:** Cons cells and list data structures are out of scope for now.

@@ -2,17 +2,22 @@ ODIN := odin
 SRC := src
 OUT := build/lisp_odin
 
-.PHONY: all build debug run test clean check lint
+.PHONY: all build debug release run test clean check lint
 
 all: build
 
+# Debug build (used in CI for fast feedback and local development).
 build:
 	@mkdir -p build
 	$(ODIN) build $(SRC) -out:$(OUT) -debug
 
-debug:
+# Alias for the debug build.
+debug: build
+
+# Optimized release build (used when producing release binaries).
+release:
 	@mkdir -p build
-	$(ODIN) build $(SRC) -out:$(OUT) -debug
+	$(ODIN) build $(SRC) -out:$(OUT) -o:speed
 
 run:
 	$(ODIN) run $(SRC)

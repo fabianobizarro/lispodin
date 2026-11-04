@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
   workflow_dispatch:
 
@@ -49,15 +51,22 @@ jobs:
         run: make test
 
   build:
-    name: Build (${{ matrix.artifact }})
+    name: Build (${{ matrix.target }})
+    needs: [lint, test]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macos-latest is arm64. Add linux/windows rows here later.
           - os: macos-latest
-            artifact: lisp_odin-macos-arm64
+            target: macos-arm64
+            ext: ''
+          - os: ubuntu-latest
+            target: linux-x64
+            ext: ''
+          - os: windows-latest
+            target: windows-x64
+            ext: '.exe'
     steps:
       - uses: actions/checkout@v4
 
@@ -68,14 +77,40 @@ jobs:
           release: ${{ env.ODIN_RELEASE }}
 
       - name: Build
-        run: make build
+        shell: bash
+        run: make release
 
       - name: Smoke run
-        run: ./build/lisp_odin
+        shell: bash
+        run: ./build/lisp_odin${{ matrix.ext }}
+
+      - name: Rename binary
+        shell: bash
+        run: mv build/lisp_odin${{ matrix.ext }} build/lisp_odin-${{ matrix.target }}${{ matrix.ext }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: build/lisp_odin
+          name: lisp_odin-${{ matrix.target }}${{ matrix.ext }}
+          path: build/lisp_odin-${{ matrix.target }}${{ matrix.ext }}
           if-no-files-found: error
+
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/**/lisp_odin-*
