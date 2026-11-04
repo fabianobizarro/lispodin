@@ -43,7 +43,6 @@ evaluate_define :: proc(def: DefineStatement, e: ^RuntimeEnvironment) -> Result 
 	value := evaluate_expression(def.value, e)
 
 	env.define(e, identifier, Atom(value.?))
-	// _env[identifier] = Atom(value.?)
 
 	return nil
 }
@@ -78,7 +77,6 @@ evaluate_expression :: proc(expression: Expression, e: ^RuntimeEnvironment) -> R
 evaluate_variable :: proc(var: VariableExpression, e: ^RuntimeEnvironment) -> Result {
 
 	val, ok := env.get(e, var.name)
-	// val, ok := _env[var.name]
 
 	if !ok do fmt.panicf("Variable %s not found", var.name)
 
@@ -93,6 +91,10 @@ evaluate_lambda_expression :: proc(
 	return core.create_lambda_function(lambda, e)
 }
 
+evaluate_literal :: proc(literal: LiteralExpression) -> Result {
+	return LiteralValue(literal.value.?)
+}
+
 evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) -> Result {
 
 	call_args := call.args
@@ -102,7 +104,6 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) 
 
 
 	// check if the lambda function exists in env and the identifier is valid
-	// if call.identifier.type == .IDENTIFIER && env.contains_key(e, call.identifier.lexeme) {
 	if env.contains_key(e, call.identifier.lexeme) {
 		raw, _ := env.get(e, call.identifier.lexeme)
 		func, ok = raw.(LambdaFunction)
@@ -123,17 +124,16 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) 
 		)
 	}
 
-
-	if func.arity >= 0 { 	// 0 means the runtime will validate the params
-		if i8(len(call_args)) != func.arity {
-			fmt.panicf(
-				"%s: Expected %d arguments but got %d.",
-				call.identifier,
-				func.arity,
-				len(call_args),
-			)
-		}
+	// 0 means the runtime function will validate the params
+	if func.arity >= 0 && i8(len(call_args)) != func.arity {
+		fmt.panicf(
+			"%s: Expected %d arguments but got %d.",
+			call.identifier,
+			func.arity,
+			len(call_args),
+		)
 	}
+
 
 	args := make([dynamic]LiteralValue)
 	for arg in call_args {
@@ -144,72 +144,4 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) 
 
 	// call function
 	return func.call(&func, args[:], evaluate)
-}
-
-
-// deprecated
-// builtin_math_function :: proc(t: TokenType) -> bool {
-// 	switch t {
-// 	case .PLUS:
-// 		return false
-// 	case .MINUS:
-// 		return true
-// 	case .STAR:
-// 		return true
-// 	case .SLASH:
-// 		return true
-// 	case .LEFT_PAREN:
-// 	case .RIGHT_PAREN:
-// 	case .STRING:
-// 	case .NUMBER:
-// 	case .TRUE:
-// 	case .FALSE:
-// 	case .IDENTIFIER:
-// 	case .DEF:
-// 	case .PRINT:
-// 	case .LAMBDA:
-// 	case .EOF:
-// 		return false
-// 	}
-//
-// 	return false
-// }
-
-// @deprecate
-// evaluate_math_operation :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) -> Result {
-// 	// args := make([dynamic]Maybe(LiteralKind))
-// 	args := make([dynamic]LiteralValue)
-// 	// defer delete(args)
-//
-// 	for arg in call.args {
-// 		value := evaluate_expression(arg, e)
-//
-// 		lambda, is_lambda := value.?.(LambdaFunction)
-// 		if is_lambda {
-// 			// TODO: call the lambda
-// 			panic("?????????????")
-// 		}
-// 		append(&args, value.?.(LiteralValue))
-//
-// 	}
-//
-// 	#partial switch call.identifier.type {
-// 	case .PLUS:
-// 		return LiteralValue(func.sum(args[:]))
-// 	case .MINUS:
-// 		return LiteralValue(func.subtract(args[:]))
-// 	case .STAR:
-// 		return LiteralValue(func.multiply(args[:]))
-// 	case .SLASH:
-// 		return LiteralValue(func.divide(args[:]))
-// 	case:
-// 		panic("Operation not supported")
-// 	}
-//
-// 	return nil
-//
-// }
-
-evaluate_literal :: proc(literal: LiteralExpression) -> Result {
-	return LiteralValue(literal.value.?)
 }

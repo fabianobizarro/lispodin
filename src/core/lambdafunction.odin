@@ -2,6 +2,7 @@ package core
 
 import env "../environment"
 import "core:fmt"
+import "core:strings"
 
 InterpreterCaller :: proc(_: []Statement, e: ^RuntimeEnvironment) -> Maybe(Atom)
 
@@ -48,27 +49,28 @@ call :: proc(
 		env.define(&function_env, param.lexeme, args[i])
 	}
 
-	fmt.println("ATÉ AQUI DEU BOM")
 
-
+	fmt.println("Function environment:")
 	print_env(&function_env)
+	fmt.println()
 
 	result := interpreter(lambda.expression.body, &function_env)
-
-	fmt.println("SERÁ?...")
 
 	return result
 }
 
 
-print_env :: proc(e: ^RuntimeEnvironment) {
+print_env :: proc(e: ^RuntimeEnvironment, enclosing_level := 0) {
+
+	tab := strings.repeat("\t", enclosing_level)
+	fmt.println(tab, "Enclosing #", enclosing_level)
 
 	for k, v in e.variables {
-		fmt.println(k, " -> ", v)
+		if _, ok := v.(LambdaFunction); ok do fmt.println(tab, k, " -> function")
+		else do fmt.println(tab, k, " -> ", v)
 	}
 
 	if e.enclosing != nil {
-		fmt.printfln("\t========")
-		print_env(e.enclosing)
+		print_env(e.enclosing, enclosing_level + 1)
 	}
 }

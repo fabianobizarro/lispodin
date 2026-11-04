@@ -11,7 +11,6 @@ init :: proc(e: ^$E/Environment($T), enclosing: ^E = nil) {
 }
 
 destroy :: proc(e: ^$E/Environment($T), recurring := false) {
-	// todo: test this proc
 	if e.variables != nil {
 		delete(e.variables)
 	}

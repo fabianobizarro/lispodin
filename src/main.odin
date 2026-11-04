@@ -116,6 +116,7 @@ run :: proc(source: string) {
 
 
 	if debug_flag {
+		fmt.println("\n Environment after execution:")
 		print_environment(&global_env)
 	}
 }
@@ -133,5 +134,4 @@ print_environment :: proc(e: ^core.RuntimeEnvironment) {
 			fmt.printfln("%s => lambda function", k)
 		}
 	}
-	// for k, v in env do fmt.printfln(k, v)
 }
