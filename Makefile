@@ -2,7 +2,7 @@ ODIN := odin
 SRC := src
 OUT := build/lisp_odin
 
-.PHONY: all build debug release run test clean check lint format-check
+.PHONY: all build debug release run test clean check lint
 
 all: build
 
@@ -33,18 +33,9 @@ clean:
 check:
 	$(ODIN) check $(SRC)
 
-# Full lint runs the Odin compiler checks. The format check is available separately via format-check.
-lint:
-	$(ODIN) check $(SRC) -vet -strict-style -warnings-as-errors -error-pos-style:unix
-
 # Format check does not rewrite sources. odinfmt has no -check flag.
-# This target is skipped silently if odinfmt is not installed.
-format-check:
-	@if ! command -v odinfmt >/dev/null 2>&1; then \
-		echo "odinfmt not found, skipping format check"; \
-		exit 0; \
-	fi; \
-	fail=0; \
+lint:
+	@fail=0; \
 	for f in $$(find $(SRC) tests -name '*.odin'); do \
 		odinfmt "$$f" > "$$f.fmt"; \
 		if ! diff -q "$$f" "$$f.fmt" >/dev/null; then \
@@ -55,3 +46,4 @@ format-check:
 		rm -f "$$f.fmt"; \
 	done; \
 	test $$fail -eq 0
+	$(ODIN) check $(SRC) -vet -strict-style -warnings-as-errors -error-pos-style:unix

@@ -74,8 +74,7 @@ make          # debug build -> build/lisp_odin
 make release  # optimized build -> build/lisp_odin
 make run      # odin run src
 make check    # type-check only
-make lint     # odin check -vet
-make format-check  # optional odinfmt check (skipped if odinfmt is not installed)
+make lint     # odinfmt check, then odin check -vet
 make test     # odin test tests -all-packages
 make clean    # remove build/
 ```
@@ -84,7 +83,7 @@ make clean    # remove build/
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on pull requests and pushes to `main`:
 
-- **Lint** — `make lint` (`odin check` with vet; `make format-check` is available separately if `odinfmt` is installed)
+- **Lint** — `make lint`
 - **Test** — `make test`
 - **Build** — `make release` on macOS (arm64), Linux (x64), and Windows (x64), then uploads the binaries as artifacts
 
