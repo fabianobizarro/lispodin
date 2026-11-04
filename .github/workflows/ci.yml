@@ -32,6 +32,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ env.ODIN_RELEASE }}
 
+      - name: Install odinfmt
+        run: |
+          git clone --depth 1 https://github.com/DanielGavin/ols.git
+          cd ols
+          odin build tools/odinfmt/main.odin -file -collection:src=src -out:odinfmt -o:speed
+          echo "$PWD" >> "$GITHUB_PATH"
+
       - name: Lint
         run: make lint
 
