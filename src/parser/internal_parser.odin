@@ -83,18 +83,12 @@ consume :: proc(type: TokenType, error_message: string) -> Token {
 
 parse_statement :: proc() -> Statement {
 
-	p := peek()
-	n := peek_next()
 	if check_next(.PRINT) do return parse_print_statement()
 	else if check_next(.DEF) do return parse_define_statement()
 	else do return parse_expression_statement()
 }
 
 parse_lambda_expression :: proc() -> LambdaExpression {
-
-	// consume(.LEFT_PAREN, "Expected '(' at the beginning of the list")
-
-	lambda := previous()
 
 	params := make([dynamic]Token)
 	body := make([dynamic]Statement)
@@ -131,7 +125,7 @@ parse_lambda_expression :: proc() -> LambdaExpression {
 parse_define_statement :: proc() -> DefineStatement {
 	consume(.LEFT_PAREN, "Expected '(' at the beginning of the list")
 
-	identifier := advance()
+	_ = advance()
 	name := advance()
 	value := parse_expression()
 
@@ -166,8 +160,6 @@ parse_expression_statement :: proc() -> ExpressionStatement {
 
 parse_expression :: proc() -> Expression {
 
-	t := peek()
-	pn := peek_next()
 	if match(.LAMBDA) do return parse_lambda_expression()
 	else if match(.LEFT_PAREN) do return parse_function_call()
 	else if match(.NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression()

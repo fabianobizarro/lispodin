@@ -2,7 +2,6 @@
 package interpreter
 
 import "../core"
-import env "../environment"
 
 Atom :: core.Atom
 

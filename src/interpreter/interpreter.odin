@@ -137,8 +137,8 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) 
 
 	args := make([dynamic]LiteralValue)
 	for arg in call_args {
-		a, ok := evaluate_expression(arg, e).?.(LiteralValue)
-		if !ok do panic("Expected a literal value or a lambda call.")
+		a, is_literal := evaluate_expression(arg, e).?.(LiteralValue)
+		if !is_literal do panic("Expected a literal value or a lambda call.")
 		append(&args, a)
 	}
 
