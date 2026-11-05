@@ -49,11 +49,6 @@ call :: proc(
 		env.define(&function_env, param.lexeme, args[i])
 	}
 
-
-	fmt.println("Function environment:")
-	print_env(&function_env)
-	fmt.println()
-
 	result := interpreter(lambda.expression.body, &function_env)
 
 	return result
