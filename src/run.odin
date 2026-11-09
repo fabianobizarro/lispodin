@@ -13,21 +13,28 @@ import scanner "scanner"
 
 run_repl :: proc() {
 
+	global_env: core.RuntimeEnvironment
+	defer env.destroy(&global_env)
+
+	initialize_global_env(&global_env)
+
 	history: repl.BufferHistory
 
 	repl.print_welcome()
 	content: string
+	defer delete(content)
 	for {
 		content, _ = repl.read_console(&history)
-		// defer delete(content)
-		fmt.println("content:_", content)
-		// if len(content) > 0 do run(content)
+		if len(content) > 0 do run(content, &global_env)
 	}
-
-	os.exit(1)
 }
 
 run_file :: proc(file: ^os.File) {
+
+	global_env: core.RuntimeEnvironment
+	defer env.destroy(&global_env)
+
+	initialize_global_env(&global_env)
 
 	data, err := os.read_entire_file(file, context.allocator)
 	if err != nil {
@@ -37,19 +44,15 @@ run_file :: proc(file: ^os.File) {
 
 	defer delete(data, context.allocator)
 
-	run(string(data))
+	run(string(data), &global_env)
 }
 
-run :: proc(source: string) {
+run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
-	global_env: core.RuntimeEnvironment
-	defer env.destroy(&global_env)
-
-	initialize_global_env(&global_env)
 
 	if debug_flag {
 		fmt.println("\nGlobal Env")
-		print_environment(&global_env)
+		print_environment(e)
 		fmt.println()
 	}
 
@@ -80,7 +83,7 @@ run :: proc(source: string) {
 
 	}
 
-	result, ok := interpreter.evaluate(ast, &global_env).?
+	result, ok := interpreter.evaluate(ast, e).?
 
 	if debug_flag do fmt.println("Evaluation: ")
 	if ok do fmt.println(result)
@@ -88,6 +91,6 @@ run :: proc(source: string) {
 
 	if debug_flag {
 		fmt.println("\n Environment after execution:")
-		print_environment(&global_env)
+		print_environment(e)
 	}
 }

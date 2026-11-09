@@ -3,6 +3,7 @@ package parser
 
 parse :: proc(tokens: []Token) -> []Statement {
 	_tokens = tokens
+	_current = 0
 
 	statements := make([dynamic]Statement)
 

@@ -77,4 +77,6 @@ _main :: proc() {
 
 	if options.file != nil do run_file(options.file)
 	else do run_repl()
+
+	os.exit(0)
 }
