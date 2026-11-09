@@ -15,3 +15,6 @@ build/
 debug_build*
 
 .zed/
+
+
+logs/
