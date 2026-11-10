@@ -25,7 +25,7 @@ run:
 # Tests live in tests/ and are pulled in through @(require) imports.
 # -all-packages is required so @(test) procedures in subpackages run.
 test:
-	$(ODIN) test tests -all-packages
+	$(ODIN) test tests -all-packages -define:ODIN_TEST_THREADS=2
 
 clean:
 	rm -rf build/

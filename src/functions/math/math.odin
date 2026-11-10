@@ -45,13 +45,23 @@ subtraction :: proc(
 ) -> Maybe(core.Atom) {
 	assert(len(values) > 0)
 
-	result: f32 = 0
-	for v, i in values {
+	if len(values) == 1 {
+		n := values[0].(f32)
+		return n == 0 ? core.LiteralValue(0) : core.LiteralValue(n * -1)
+	}
+
+	argument_value: f32
+	ok: bool
+
+	argument_value, ok = values[0].(f32)
+	if !ok do fmt.panicf("Argument %d: Expected Number", 0)
+
+	result: f32 = values[0].(f32)
+	for v, i in values[1:] {
 
 		argument_value, ok := v.(f32)
-		if !ok {
-			fmt.panicf("Argument %d: Expected Number", i)
-		}
+		if !ok do fmt.panicf("Argument %d: Expected Number", i)
+
 		result -= argument_value
 	}
 
@@ -94,15 +104,20 @@ division :: proc(
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
 ) -> Maybe(core.Atom) {
-	if len(values) == 0 do return core.LiteralValue(1)
+	assert(len(values) > 0, "Required 1 or more operands")
 
-	result: f32 = 1
-	for v, i in values {
+	if len(values) == 1 {
+		val := values[0].(f32)
+		if val == 0 do panic("Division by Zero")
+
+		return LiteralValue(1 / val)
+	}
+
+	result: f32 = values[0].(f32)
+	for v, i in values[1:] {
 
 		argument_value, ok := v.(f32)
-		if !ok {
-			fmt.panicf("Argument %d: Expected Number", i)
-		}
+		if !ok do fmt.panicf("Argument %d: Expected Number", i)
 
 		if argument_value == 0 do panic("Division by Zero")
 
