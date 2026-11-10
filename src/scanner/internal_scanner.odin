@@ -2,6 +2,7 @@
 package scanner
 
 import core "../core"
+import "core:fmt"
 
 import "core:strconv"
 import "core:strings"
@@ -54,29 +55,23 @@ scan_token :: proc() {
 		add_token({type = .LEFT_PAREN, lexeme = "("})
 	case ')':
 		add_token({type = .RIGHT_PAREN, lexeme = ")"})
-	case '/':
-		add_token({type = .SLASH, lexeme = "/"})
-	case '-':
-		add_token({type = .MINUS, lexeme = "-"})
-	case '+':
-		add_token({type = .PLUS, lexeme = "+"})
-	case '*':
-		add_token({type = .STAR, lexeme = "*"})
 	case '\n':
 		_line += 1
 		break
 	case '\t':
 	case ' ':
 	case '\r':
-		{}
+		fallthrough
 	case '"':
 		read_string()
 	case:
 		if match.is_digit(char) do read_number()
-		else if match.is_alpha(char) do read_identifier()
-		else {
-			panic("Unexpected character")
-		}
+		else do read_identifier()
+	// else if match.is_alpha(char) do read_identifier()
+	// else // TODO: should include symbols? + - / *
+	// {
+	// 	fmt.panicf("Unexpected character: %c", char)
+	// }
 	}
 }
 
@@ -118,11 +113,11 @@ read_string :: proc() {
 	}
 
 	if is_at_end() {
-		panic("Unterminaed string")
+		panic("Unterminated string.")
 	}
 
 	advance()
 
-	value := _source[_start:_current] // todo: test
+	value := _source[_start + 1:_current - 1] // todo: test
 	add_token({type = .STRING, literal = value, lexeme = value})
 }

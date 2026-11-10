@@ -3,10 +3,6 @@ package core
 TokenType :: enum {
 	LEFT_PAREN,
 	RIGHT_PAREN,
-	PLUS,
-	MINUS,
-	SLASH,
-	STAR,
 
 	// LITERALS
 	STRING,
