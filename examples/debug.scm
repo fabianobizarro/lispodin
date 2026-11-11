@@ -1,1 +1,1 @@
-(print true)
+(print "fabiano" (newline) "augusto" (newline) )

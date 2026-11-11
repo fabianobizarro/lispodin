@@ -70,10 +70,6 @@ write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) {
 	res, ok := atom.?
 	if !ok do return
 
-	// if lambda, is_lambda := res.(LambdaFunction); is_lambda {
-	// 	lamevaluate
-	// }
-
 	literal := res.(LiteralValue) or_else panic("Expected a literal value to be printed.")
 
 	switch v in literal {
@@ -164,7 +160,7 @@ evaluate_lamba_call :: proc(call: LambdaCallExpression, e: ^RuntimeEnvironment) 
 		)
 	}
 
-	// 0 means the runtime function will validate the params
+	// -1 means the runtime function will validate the params
 	if func.arity >= 0 && i8(len(call_args)) != func.arity {
 		fmt.panicf(
 			"%s: Expected %d arguments but got %d.",
