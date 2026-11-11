@@ -2,7 +2,6 @@
 package scanner
 
 import core "../core"
-import "core:fmt"
 
 import "core:strconv"
 import "core:strings"
@@ -67,11 +66,6 @@ scan_token :: proc() {
 	case:
 		if match.is_digit(char) do read_number()
 		else do read_identifier()
-	// else if match.is_alpha(char) do read_identifier()
-	// else // TODO: should include symbols? + - / *
-	// {
-	// 	fmt.panicf("Unexpected character: %c", char)
-	// }
 	}
 }
 
@@ -118,6 +112,6 @@ read_string :: proc() {
 
 	advance()
 
-	value := _source[_start + 1:_current - 1] // todo: test
+	value := _source[_start + 1:_current - 1]
 	add_token({type = .STRING, literal = value, lexeme = value})
 }

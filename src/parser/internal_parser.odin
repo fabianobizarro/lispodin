@@ -179,7 +179,14 @@ parse_literal_expression :: proc() -> LiteralExpression {
 
 	token := previous()
 
-	return {value = token.literal}
+	exp: LiteralExpression
+
+	if token.type == .TRUE do exp.value = true
+	else if token.type == .FALSE do exp.value = false
+	else do exp.value = token.literal
+
+	return exp
+	// return {value = token.literal}
 }
 
 parse_function_call :: proc() -> LambdaCallExpression {
