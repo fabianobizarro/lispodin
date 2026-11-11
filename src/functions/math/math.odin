@@ -59,7 +59,7 @@ subtraction :: proc(
 	result: f32 = values[0].(f32)
 	for v, i in values[1:] {
 
-		argument_value, ok := v.(f32)
+		argument_value, ok = v.(f32)
 		if !ok do fmt.panicf("Argument %d: Expected Number", i)
 
 		result -= argument_value

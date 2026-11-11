@@ -1,4 +1,4 @@
 package tests
 
 @(require) import "../src/functions/math"
-@(require) import "token"
+@(require) import "scanner"
