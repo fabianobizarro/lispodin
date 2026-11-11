@@ -1,7 +1,6 @@
 package interpreter
 
 import "core:fmt"
-import "core:strconv"
 import "core:strings"
 
 import core "../core"
@@ -55,7 +54,7 @@ evaluate_print :: proc(print: PrintStatement, e: ^RuntimeEnvironment) -> Result 
 	defer strings.builder_destroy(&builder)
 
 	for s in print.arguments {
-		exp, ok := evaluate_expression(s, e).?
+		exp, _ := evaluate_expression(s, e).?
 
 		write_builder(&builder, exp)
 	}
