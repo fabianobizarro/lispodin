@@ -63,6 +63,8 @@ scan_token :: proc() {
 		fallthrough
 	case '"':
 		read_string()
+	case ';':
+		for peek() != '\n' && !is_at_end() do advance()
 	case:
 		if match.is_digit(char) do read_number()
 		else do read_identifier()

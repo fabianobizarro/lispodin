@@ -29,6 +29,7 @@ test:
 
 clean:
 	rm -rf build/
+	rm -rf debug*
 
 check:
 	$(ODIN) check $(SRC)
