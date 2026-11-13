@@ -7,65 +7,56 @@ import "core:text/match"
 
 Token :: core.Token
 
-is_digit :: match.is_digit
 
-/*
-internal variables
-*/
-_start: int = 0
-_current: int = 0
-_line: int = 1
-
-_source: string
-tokens: [dynamic]Token
-
-is_at_end :: proc() -> bool {
-	return _current >= len(_source)
+is_at_end :: proc(s: ^ScannerContext) -> bool {
+	return s.current >= len(s.source)
 }
 
-advance :: proc() -> rune {
-	c := _source[_current]
-	_current += 1
+advance :: proc(s: ^ScannerContext) -> rune {
+	c := s.source[s.current]
+	s.current += 1
 
 	return rune(c)
 }
 
-peek :: proc() -> rune {
-	return 0 if is_at_end() else rune(_source[_current])
+peek :: proc(s: ^ScannerContext) -> rune {
+	return 0 if is_at_end(s) else rune(s.source[s.current])
 }
 
-peek_next :: proc() -> rune {
-	return 0 if _current + 1 >= len(_source) else rune(_source[_current + 1])
+peek_next :: proc(s: ^ScannerContext) -> rune {
+	return 0 if s.current + 1 >= len(s.source) else rune(s.source[s.current + 1])
 }
 
-add_token :: proc(token: Token) {
-	append(&tokens, token)
+add_token :: proc(s: ^ScannerContext, token: Token) {
+	append(&s.tokens, token)
 }
 
 
-scan_token :: proc() {
-	assert(len(_source) > 0)
+scan_token :: proc(s: ^ScannerContext) {
+	assert(len(s.source) > 0)
 
-	char := advance()
+	char := advance(s)
 	switch char {
 	case '(':
-		add_token({type = .LEFT_PAREN, lexeme = "("})
+		add_token(s, {type = .LEFT_PAREN, lexeme = "("})
 	case ')':
-		add_token({type = .RIGHT_PAREN, lexeme = ")"})
+		add_token(s, {type = .RIGHT_PAREN, lexeme = ")"})
 	case '\n':
-		_line += 1
+		s.line += 1
 		break
 	case '\t':
-	case ' ':
-	case '\r':
 		fallthrough
+	case ' ':
+		fallthrough
+	case '\r':
+		break
 	case '"':
-		read_string()
+		read_string(s)
 	case ';':
-		for peek() != '\n' && !is_at_end() do advance()
+		for peek(s) != '\n' && !is_at_end(s) do advance(s)
 	case:
-		if match.is_digit(char) do read_number()
-		else if char == '-' && match.is_digit(peek()) do read_number()
-		else do read_identifier()
+		if match.is_digit(char) do read_number(s)
+		else if char == '-' && match.is_digit(peek(s)) do read_number(s)
+		else do read_identifier(s)
 	}
 }
