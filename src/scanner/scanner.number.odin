@@ -2,23 +2,21 @@
 package scanner
 
 import "core:strconv"
-import "core:strings"
+import "core:text/match"
 
-read_number :: proc() {
-	for is_digit(peek()) do advance()
+is_digit :: match.is_digit
 
-	if peek() == '.' && is_digit(peek_next()) {
-		advance() // pula o ponto
-		for is_digit(peek()) do advance()
+read_number :: proc(s: ^ScannerContext) {
+	for is_digit(peek(s)) do advance(s)
+
+	if peek(s) == '.' && is_digit(peek_next(s)) {
+		advance(s) // pula o ponto
+		for is_digit(peek(s)) do advance(s)
 	}
 
-	literal_text :=
-		strings.substring(_source, _start, _current) or_else panic(
-			"Failed to retrieve literal value",
-		)
-
+	literal_text := s.source[s.start:s.current]
 	literal := strconv.parse_f32(literal_text) or_else panic("Failed to parse literal value.")
 
-	add_token(Token{type = .NUMBER, lexeme = literal_text, literal = literal})
+	add_token(s, Token{type = .NUMBER, lexeme = literal_text, literal = literal})
 
 }
