@@ -1,6 +1,5 @@
 package scanner
 
-import "vendor:vulkan"
 tokenize :: proc {
 	tokenize_context_source,
 	tokenize_source,
@@ -15,7 +14,7 @@ ScannerContext :: struct {
 }
 
 scanner_context_init :: proc(s: ^ScannerContext, source: string = "") {
-	s: ScannerContext = {
+	s^ = {
 		start   = 0,
 		current = 0,
 		line    = 1,
@@ -42,15 +41,7 @@ tokenize_context_source :: proc(s: ^ScannerContext, source: string) -> []Token {
 @(private)
 tokenize_source :: proc(source: string) -> []Token {
 
-	// s: ScannerContext = {
-	// 	start   = 0,
-	// 	current = 0,
-	// 	line    = 1,
-	// 	source  = source,
-	// 	tokens  = make([dynamic]Token),
-	// }
 	s: ScannerContext
-
 	scanner_context_init(&s, source)
 
 	return tokenize(&s, source)

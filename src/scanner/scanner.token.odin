@@ -56,7 +56,7 @@ scan_token :: proc(s: ^ScannerContext) {
 		for peek(s) != '\n' && !is_at_end(s) do advance(s)
 	case:
 		if match.is_digit(char) do read_number(s)
-		else if char == '-' && match.is_digit(peek(s)) do read_number(s)
+		else if (char == '-' || char == '+') && match.is_digit(peek(s)) do read_number(s)
 		else do read_identifier(s)
 	}
 }

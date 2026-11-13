@@ -2,7 +2,6 @@
 package scanner
 
 import "core:strconv"
-import "core:strings"
 import "core:text/match"
 
 is_digit :: match.is_digit

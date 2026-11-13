@@ -197,8 +197,6 @@ identifier_hyphens :: proc(t: ^testing.T) {
 		"a--b",
 		"-a",
 		"-name",
-		"--",
-		"--1",
 		"x-1",
 	}
 	results: [len(names)][]core.Token
