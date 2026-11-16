@@ -138,7 +138,12 @@ division :: proc(
 
 	if len(values) == 1 {
 		val := values[0].(f32)
-		if val == 0 do panic("Division by Zero")
+		if val == 0 {
+			return nil, core.Runtime_Error {
+				kind = .Division_By_Zero,
+				message = "Division by Zero Error",
+			}
+		}
 
 		return LiteralValue(1 / val), nil
 	}

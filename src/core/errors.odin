@@ -15,6 +15,7 @@ Parser_Error_Kind :: enum u32 {
 	Unexpected_Token,
 	Max_Parameters_Length,
 	Unexpected_Expression,
+	Lambda_Body_Expected,
 }
 
 Parser_Error :: struct {

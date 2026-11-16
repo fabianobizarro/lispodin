@@ -41,7 +41,6 @@ parse_lambda_expression :: proc(p: ^Parser) -> (exp: LambdaExpression, err: Erro
 	for !check(p, .RIGHT_PAREN) {
 
 		if len(params) > MAX_PARAMS_SIZE {
-			// fmt.panicf("Can't have more than %d parameters.", MAX_PARAMS_SIZE)
 			exp = {}
 			err = Parser_Error {
 				kind    = .Max_Parameters_Length,
@@ -59,7 +58,13 @@ parse_lambda_expression :: proc(p: ^Parser) -> (exp: LambdaExpression, err: Erro
 	* Parsing body
 	*/
 
-	if check(p, .RIGHT_PAREN) do panic("Lambda body expected.")
+	if check(p, .RIGHT_PAREN) {
+		err = Parser_Error {
+			kind    = .Lambda_Body_Expected,
+			message = "Lambda body expected.",
+		}
+		return
+	}
 
 	for !check(p, .RIGHT_PAREN) {
 		append(&body, parse_statement(p) or_return)

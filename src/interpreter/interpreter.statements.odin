@@ -80,7 +80,7 @@ write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) {
 	res, ok := atom.?
 	if !ok do return
 
-	literal := res.(LiteralValue) or_else panic("Expected a literal value to be printed.")
+	literal := res.(LiteralValue)
 
 	switch v in literal {
 	case f32:
