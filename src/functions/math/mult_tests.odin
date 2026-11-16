@@ -9,10 +9,13 @@ multiplication_test_1 :: proc(t: ^testing.T) {
 	values := []LiteralValue{}
 
 	// act
-	result := multiplication(nil, values[:], nil).?.(LiteralValue)
+	result, err := multiplication(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 1)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 1)
 }
 
 @(test)
@@ -21,10 +24,13 @@ multiplication_test_2 :: proc(t: ^testing.T) {
 	values := [1]LiteralValue{8}
 
 	// act
-	result := multiplication(nil, values[:], nil).?.(LiteralValue)
+	result, err := multiplication(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 8)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 8)
 }
 
 @(test)
@@ -33,10 +39,13 @@ multiplication_test_3 :: proc(t: ^testing.T) {
 	values := [3]LiteralValue{-12, 1, 2}
 
 	// act
-	result := multiplication(nil, values[:], nil).?.(LiteralValue)
+	result, err := multiplication(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, -24)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, -24)
 }
 
 
@@ -46,10 +55,13 @@ multiplication_test_4 :: proc(t: ^testing.T) {
 	values := [1]LiteralValue{-12}
 
 	// act
-	result := multiplication(nil, values[:], nil).?.(LiteralValue)
+	result, err := multiplication(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, -12)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, -12)
 }
 
 
@@ -59,8 +71,11 @@ multiplication_test_5 :: proc(t: ^testing.T) {
 	values := [7]LiteralValue{-12, 1, 5, 89, 0, 4234, -89}
 
 	// act
-	result := multiplication(nil, values[:], nil).?.(LiteralValue)
+	result, err := multiplication(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 0)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 0)
 }

@@ -8,12 +8,14 @@ import "core:testing"
 @(test)
 string_tests_1 :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	ExpectedValue :: "hello!"
 	tokens: []core.Token
 	defer delete(tokens)
 
 	// act
-	tokens = scanner.tokenize(" \"hello!\" ")
+	tokens, scan_errors = scanner.tokenize(" \"hello!\" ")
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, tokens != nil)
@@ -30,6 +32,7 @@ string_tests_1 :: proc(t: ^testing.T) {
 @(test)
 string_tests_2 :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	ExpectedValue1 :: "hello"
 	ExpectedValue2 :: "world!"
 
@@ -37,7 +40,8 @@ string_tests_2 :: proc(t: ^testing.T) {
 	defer delete(tokens)
 
 	// act
-	tokens = scanner.tokenize(" \"hello\"   \"world!\" ")
+	tokens, scan_errors = scanner.tokenize(" \"hello\"   \"world!\" ")
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, tokens != nil)

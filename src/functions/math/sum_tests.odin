@@ -9,10 +9,13 @@ sum_test_1 :: proc(t: ^testing.T) {
 	values := []LiteralValue{}
 
 	// act
-	result := sum(nil, values[:], nil).?.(LiteralValue)
+	result, err := sum(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 0)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 0)
 }
 
 @(test)
@@ -21,10 +24,13 @@ sum_test_2 :: proc(t: ^testing.T) {
 	values := [1]LiteralValue{1}
 
 	// act
-	result := sum(nil, values[:], nil).?.(LiteralValue)
+	result, err := sum(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 1)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 1)
 }
 
 @(test)
@@ -33,10 +39,13 @@ sum_test_3 :: proc(t: ^testing.T) {
 	values := [3]LiteralValue{-12, 1, 2}
 
 	// act
-	result := sum(nil, values[:], nil).?.(LiteralValue)
+	result, err := sum(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, -9)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, -9)
 }
 
 
@@ -46,8 +55,11 @@ sum_test_4 :: proc(t: ^testing.T) {
 	values := [2]LiteralValue{1, 1}
 
 	// act
-	result := sum(nil, values[:], nil).?.(LiteralValue)
+	result, err := sum(nil, values[:], nil)
 
 	// assert
-	testing.expect_value(t, result, 2)
+	value, ok := result.?.(LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 2)
 }

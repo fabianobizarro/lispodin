@@ -7,12 +7,14 @@ import "core:testing"
 @(test)
 number_zero :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "0"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -26,12 +28,14 @@ number_zero :: proc(t: ^testing.T) {
 @(test)
 number_positive_integer :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "10"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -45,12 +49,14 @@ number_positive_integer :: proc(t: ^testing.T) {
 @(test)
 number_explicit_positive_integer :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "+10"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -64,12 +70,14 @@ number_explicit_positive_integer :: proc(t: ^testing.T) {
 @(test)
 number_negative_integer :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "-10"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -83,12 +91,14 @@ number_negative_integer :: proc(t: ^testing.T) {
 @(test)
 number_explicit_positive_decimal :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "+10.234"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -102,12 +112,14 @@ number_explicit_positive_decimal :: proc(t: ^testing.T) {
 @(test)
 number_negative_decimal :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "-4532.423"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -121,12 +133,14 @@ number_negative_decimal :: proc(t: ^testing.T) {
 @(test)
 number_zero_point_decimal :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "0.978"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -140,12 +154,14 @@ number_zero_point_decimal :: proc(t: ^testing.T) {
 @(test)
 number_multiple_numbers :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "0 10 +10 -10 +10.234 -4532.423 0.978"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -177,12 +193,14 @@ number_multiple_numbers :: proc(t: ^testing.T) {
 @(test)
 number_plus_alone_is_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "+"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -195,12 +213,14 @@ number_plus_alone_is_identifier :: proc(t: ^testing.T) {
 @(test)
 number_plus_prefix_inside_expression :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(+ +10 -90)"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)

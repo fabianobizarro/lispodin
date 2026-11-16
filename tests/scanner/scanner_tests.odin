@@ -7,12 +7,14 @@ import "core:testing"
 @(test)
 tokenize_test :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(+ 1)"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -28,12 +30,14 @@ tokenize_test :: proc(t: ^testing.T) {
 @(test)
 tokenize_test_def :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(def a 10)"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -50,12 +54,14 @@ tokenize_test_def :: proc(t: ^testing.T) {
 @(test)
 tokenize_test_lambda :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(lambda n () (10))"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -74,12 +80,14 @@ tokenize_test_lambda :: proc(t: ^testing.T) {
 @(test)
 tokenize_test_lambda_with_params :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(lambda n (a b) (10))"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
