@@ -7,6 +7,7 @@ This document describes the Lisp-like language implemented by the interpreter in
 The language is a minimal, parenthesized, prefix-notation language inspired by Scheme and Lisp. Programs are made of **forms** (parenthesized lists) and **atoms** (literals and identifiers). The interpreter reads source text, tokenizes it, parses it into an AST, and evaluates the result.
 
 Key characteristics:
+
 - **Prefix notation:** `(operator arg1 arg2 ...)`
 - **Dynamic typing:** values are one of `f32`, `string`, `bool`, or `lambda`.
 - **Lexical scoping:** lambdas capture the environment where they are defined.
@@ -14,12 +15,12 @@ Key characteristics:
 
 ## 2. Data Types
 
-| Type | Description | Literal Example |
-|------|-------------|-----------------|
-| `number` | 32-bit floating point (`f32`) | `42`, `3.14`, `-7` |
-| `string` | Double-quoted text | `"hello"` |
-| `bool` | Boolean value | `true`, `false` |
-| `lambda` | Anonymous function value | `(lambda (x) (+ x 1))` |
+| Type     | Description                   | Literal Example        |
+| -------- | ----------------------------- | ---------------------- |
+| `number` | 32-bit floating point (`f32`) | `42`, `3.14`, `-7`     |
+| `string` | Double-quoted text            | `"hello"`              |
+| `bool`   | Boolean value                 | `true`, `false`        |
+| `lambda` | Anonymous function value      | `(lambda (x) (+ x 1))` |
 
 ### 2.1 Numbers
 
@@ -50,6 +51,7 @@ false
 ### 2.4 Lambda Values
 
 A lambda value is a first-class function object that carries:
+
 - its parameter list,
 - its body (a list of statements),
 - its arity,
@@ -61,23 +63,23 @@ A lambda value is a first-class function object that carries:
 
 The scanner produces the following token kinds:
 
-| Token | Lexeme |
-|-------|--------|
-| `LEFT_PAREN` | `(` |
-| `RIGHT_PAREN` | `)` |
-| `PLUS` | `+` |
-| `MINUS` | `-` |
-| `STAR` | `*` |
-| `SLASH` | `/` |
-| `NUMBER` | sequence of digits, optional `.` and fraction |
-| `STRING` | `"..."` |
-| `TRUE` | `true` |
-| `FALSE` | `false` |
-| `IDENTIFIER` | alphabetic identifier |
-| `DEF` | `def` |
-| `PRINT` | `print` |
-| `LAMBDA` | `lambda` |
-| `EOF` | end of input |
+| Token         | Lexeme                                        |
+| ------------- | --------------------------------------------- |
+| `LEFT_PAREN`  | `(`                                           |
+| `RIGHT_PAREN` | `)`                                           |
+| `PLUS`        | `+`                                           |
+| `MINUS`       | `-`                                           |
+| `STAR`        | `*`                                           |
+| `SLASH`       | `/`                                           |
+| `NUMBER`      | sequence of digits, optional `.` and fraction |
+| `STRING`      | `"..."`                                       |
+| `TRUE`        | `true`                                        |
+| `FALSE`       | `false`                                       |
+| `IDENTIFIER`  | alphabetic identifier                         |
+| `DEF`         | `def`                                         |
+| `PRINT`       | `print`                                       |
+| `LAMBDA`      | `lambda`                                      |
+| `EOF`         | end of input                                  |
 
 ### 3.2 Identifiers
 

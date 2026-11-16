@@ -50,47 +50,62 @@ run_file :: proc(file: ^os.File) {
 run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 
-	if debug_flag {
-		fmt.println("\nGlobal Env")
-		print_environment(e)
-		fmt.println()
-	}
+	if debug_flag do display_environment(e)
+	if debug_flag do display_input(source)
 
-	if debug_flag {
-
-		fmt.println("Input: ", source)
-		fmt.println()
-	}
-
-	tokens := scanner.tokenize(source)
+	tokens, errors := scanner.tokenize(source)
 	defer delete(tokens)
 
-	if debug_flag {
-		fmt.println("Tokens")
-		for t in tokens {
-			fmt.println(t)
-		}
-		fmt.println()
+	if len(errors) > 0 {
+		display_errors(errors)
+		return
 	}
+
+	if debug_flag do display_tokens(tokens)
 
 	ast := parser.parse(tokens)
 
-	if debug_flag {
-
-		fmt.println("AST")
-		for s in ast do fmt.printfln("%#v", s)
-		fmt.println()
-
-	}
+	if debug_flag do display_ast(ast)
 
 	result, ok := interpreter.evaluate(ast, e).?
 
 	if debug_flag do fmt.println("Evaluation: ")
+
 	if ok do fmt.println(result)
+}
 
+display_input :: proc(source: string) {
+	fmt.println("Input: ", source)
+	fmt.println()
+}
 
-	if debug_flag {
-		fmt.println("\n Environment after execution:")
-		print_environment(e)
+display_environment :: proc(e: ^core.RuntimeEnvironment) {
+	fmt.println("\nGlobal Env")
+	print_environment(e)
+	fmt.println()
+}
+
+display_tokens :: proc(tokens: []core.Token) {
+	fmt.println("Tokens")
+	for t in tokens {
+		fmt.println(t)
+	}
+	fmt.println()
+}
+
+display_ast :: proc(ast: []core.Statement) {
+	fmt.println("AST")
+	for s in ast do fmt.printfln("%#v", s)
+	fmt.println()
+}
+
+display_errors :: proc(errs: []core.Error) {
+	for err in errs {
+		switch e in err {
+		case core.Scanner_Error:
+			fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
+		case core.Parser_Error:
+			fmt.printfln("[ParsingError][line %d][%s] %s", e.line, e.kind, e.message)
+		}
 	}
 }

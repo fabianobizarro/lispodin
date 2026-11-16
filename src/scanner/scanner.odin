@@ -1,5 +1,7 @@
 package scanner
 
+import "../core"
+
 tokenize :: proc {
 	tokenize_context_source,
 	tokenize_source,
@@ -24,22 +26,26 @@ scanner_context_init :: proc(s: ^ScannerContext, source: string = "") {
 }
 
 @(private)
-tokenize_context_source :: proc(s: ^ScannerContext, source: string) -> []Token {
+tokenize_context_source :: proc(s: ^ScannerContext, source: string) -> ([]Token, []core.Error) {
 	assert(s != nil)
+
+	errors: [dynamic]core.Error
 
 	s.source = source
 	for !is_at_end(s) {
 		s.start = s.current
-		scan_token(s)
+
+		err := scan_token(s)
+		if err != nil do append(&errors, err)
 	}
 
 	add_token(s, {type = .EOF})
 
-	return s.tokens[:]
+	return s.tokens[:], errors[:]
 }
 
 @(private)
-tokenize_source :: proc(source: string) -> []Token {
+tokenize_source :: proc(source: string) -> ([]Token, []core.Error) {
 
 	s: ScannerContext
 	scanner_context_init(&s, source)

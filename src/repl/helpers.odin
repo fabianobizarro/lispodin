@@ -40,8 +40,9 @@ debug_history :: proc(h: ^BufferHistory) {
 	file, err := os.open(HISTORY_LOGS_PATH, {.Write, .Append, .Create})
 	defer os.close(file)
 	if err != nil {
+
 		fmt.eprint("Error when creating the debug file\n")
-		fmt.eprintln(err)
+		fmt.eprintln(os.error_string(err))
 		os.exit(1)
 	}
 
