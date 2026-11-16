@@ -4,7 +4,13 @@ import env "../environment"
 import "core:fmt"
 import "core:strings"
 
-InterpreterCaller :: proc(_: []Statement, e: ^RuntimeEnvironment) -> Maybe(Atom)
+InterpreterCaller :: proc(
+	_: []Statement,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Maybe(Atom),
+	err: Error,
+)
 
 FunctionCreator :: proc(exp: LambdaExpression) -> LambdaFunction
 
@@ -12,7 +18,10 @@ LambdaCallHandler :: proc(
 	i: ^LambdaFunction,
 	args: []LiteralValue,
 	interpreter: InterpreterCaller,
-) -> Maybe(Atom)
+) -> (
+	result: Maybe(Atom),
+	err: Error,
+)
 
 LambdaFunction :: struct {
 	arity:      i8,
@@ -39,7 +48,10 @@ call :: proc(
 	lambda: ^LambdaFunction,
 	args: []LiteralValue,
 	interpreter: InterpreterCaller,
-) -> Maybe(Atom) {
+) -> (
+	result: Maybe(Atom),
+	err: Error,
+) {
 
 	function_env: RuntimeEnvironment
 	defer env.destroy(&function_env)
@@ -49,9 +61,9 @@ call :: proc(
 		env.define(&function_env, param.lexeme, args[i])
 	}
 
-	result := interpreter(lambda.expression.body, &function_env)
+	result, err = interpreter(lambda.expression.body, &function_env)
 
-	return result
+	return
 }
 
 

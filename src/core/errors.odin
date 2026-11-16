@@ -23,7 +23,26 @@ Parser_Error :: struct {
 	message: string,
 }
 
+Runtime_Error_Kind :: enum u32 {
+	Lambda_Call_Mismatch,
+	Lambda_Arity_Mismatch,
+	Unexpected_Expression,
+	Unexpected_Statement,
+	Runtime_Or_Lambda_Expected,
+	Variable_Not_Found,
+	Expected_Number,
+	Division_By_Zero,
+}
+
+Runtime_Error :: struct {
+	kind:    Runtime_Error_Kind,
+	token:   string,
+	message: string,
+}
+
+
 Error :: union {
 	Scanner_Error,
 	Parser_Error,
+	Runtime_Error,
 }

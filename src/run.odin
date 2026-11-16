@@ -54,8 +54,8 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 	if debug_flag do display_input(source)
 
 	tokens: []core.Token
-	errors: []core.Error
 	ast: []core.Statement
+	errors: []core.Error
 
 	tokens, errors = scanner.tokenize(source)
 	defer delete(tokens)
@@ -76,11 +76,13 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 	if debug_flag do display_ast(ast)
 
-	result, ok := interpreter.evaluate(ast, e).?
+	result, error := interpreter.evaluate(ast, e)
+	_, ok := result.?
 
 	if debug_flag do fmt.println("Evaluation: ")
 
 	if ok do fmt.println(result)
+	else do display_error(error)
 }
 
 display_input :: proc(source: string) {
@@ -108,13 +110,17 @@ display_ast :: proc(ast: []core.Statement) {
 	fmt.println()
 }
 
-display_errors :: proc(errs: []core.Error) {
-	for err in errs {
-		switch e in err {
-		case core.Scanner_Error:
-			fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
-		case core.Parser_Error:
-			fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
-		}
+display_error :: proc(err: core.Error) {
+	switch e in err {
+	case core.Scanner_Error:
+		fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
+	case core.Parser_Error:
+		fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
+	case core.Runtime_Error:
+		fmt.printfln("[RuntimeError][%s] %s - %s", e.kind, e.token, e.message)
 	}
+}
+
+display_errors :: proc(errs: []core.Error) {
+	for err in errs do display_error(err)
 }

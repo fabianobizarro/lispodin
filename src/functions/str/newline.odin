@@ -11,7 +11,10 @@ new_line :: proc(
 	_: ^core.LambdaFunction,
 	_: []core.LiteralValue,
 	_: core.InterpreterCaller,
-) -> Maybe(core.Atom) {
+) -> (
+	Maybe(core.Atom),
+	core.Error,
+) {
 
-	return core.LiteralValue("\n")
+	return core.LiteralValue("\n"), nil
 }
