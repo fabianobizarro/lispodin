@@ -53,7 +53,11 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 	if debug_flag do display_environment(e)
 	if debug_flag do display_input(source)
 
-	tokens, errors := scanner.tokenize(source)
+	tokens: []core.Token
+	errors: []core.Error
+	ast: []core.Statement
+
+	tokens, errors = scanner.tokenize(source)
 	defer delete(tokens)
 
 	if len(errors) > 0 {
@@ -63,7 +67,12 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 	if debug_flag do display_tokens(tokens)
 
-	ast := parser.parse(tokens)
+	ast, errors = parser.parse(tokens)
+
+	if len(errors) > 0 {
+		display_errors(errors)
+		return
+	}
 
 	if debug_flag do display_ast(ast)
 
@@ -105,7 +114,7 @@ display_errors :: proc(errs: []core.Error) {
 		case core.Scanner_Error:
 			fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
 		case core.Parser_Error:
-			fmt.printfln("[ParsingError][line %d][%s] %s", e.line, e.kind, e.message)
+			fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
 		}
 	}
 }

@@ -12,12 +12,14 @@ Scanner_Error :: struct {
 }
 
 Parser_Error_Kind :: enum u32 {
-	None = 0,
+	Unexpected_Token,
+	Max_Parameters_Length,
+	Unexpected_Expression,
 }
 
 Parser_Error :: struct {
 	kind:    Parser_Error_Kind,
-	line:    int,
+	// line:    int,
 	message: string,
 }
 

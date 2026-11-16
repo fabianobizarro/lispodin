@@ -1,17 +1,33 @@
 package parser
 
+import "../core"
 
-parse :: proc(tokens: []Token) -> []Statement {
-	_tokens = tokens
-	_current = 0
+Token :: core.Token
+TokenType :: core.TokenType
 
-	statements := make([dynamic]Statement)
-
-	for !is_at_end() {
-		append(&statements, parse_statement())
-	}
-
-	return statements[:]
+Parser :: struct {
+	tokens:  []Token,
+	current: int,
 }
 
-parse_teste :: proc() {}
+
+parse :: proc(tokens: []Token) -> (stmts: []Statement, errs: []core.Error) {
+
+	p: Parser = {
+		current = 0,
+		tokens  = tokens,
+	}
+
+	errors := make([dynamic]core.Error)
+	statements := make([dynamic]Statement)
+
+	for !is_at_end(&p) {
+		stmt, err := parse_statement(&p)
+
+		if err != nil do append(&errors, err)
+		else do append(&statements, stmt)
+
+	}
+
+	return statements[:], errors[:]
+}
