@@ -24,8 +24,10 @@ parse :: proc(tokens: []Token) -> (stmts: []Statement, errs: []core.Error) {
 	for !is_at_end(&p) {
 		stmt, err := parse_statement(&p)
 
-		if err != nil do append(&errors, err)
-		else do append(&statements, stmt)
+		if err != nil {
+			append(&errors, err)
+			advance(&p)
+		} else do append(&statements, stmt)
 
 	}
 

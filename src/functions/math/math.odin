@@ -18,26 +18,23 @@ sum :: proc(
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
 ) -> (
-	Maybe(core.Atom),
-	core.Error,
+	result: Maybe(core.Atom),
+	err: core.Error,
 ) {
 	if len(values) == 0 do return core.LiteralValue(0), nil
 
-	result: f32 = 0
+	argument_value: f32
+	accum: f32 = 0
 	for v, i in values {
 
-		argument_value, ok := v.(f32)
-		if !ok {
-			return nil, core.Runtime_Error {
-				kind = .Lambda_Call_Mismatch,
-				message = fmt.aprint("Argument %d: Expected Number", i),
-			}
-		}
+		argument_value = parse_f32(v) or_return
 
-		result += argument_value
+		accum += argument_value
 	}
 
-	return core.LiteralValue(result), nil
+	result = core.LiteralValue(accum)
+	err = nil
+	return
 }
 
 
@@ -51,42 +48,27 @@ subtraction :: proc(
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
 ) -> (
-	Maybe(core.Atom),
-	core.Error,
+	result: Maybe(core.Atom),
+	err: core.Error,
 ) {
 	assert(len(values) > 0)
 
 	if len(values) == 1 {
-		n := values[0].(f32)
+		n := parse_f32(values[0]) or_return
 		return n == 0 ? core.LiteralValue(0) : core.LiteralValue(n * -1), nil
 	}
 
 	argument_value: f32
-	ok: bool
+	accum := parse_f32(values[0]) or_return
 
-	argument_value, ok = values[0].(f32)
-	if !ok {
-		return nil, core.Runtime_Error {
-			kind = .Expected_Number,
-			message = fmt.aprint("Argument %d: Expected Number", 0),
-		}
-	}
-
-	result: f32 = values[0].(f32)
 	for v, i in values[1:] {
-
-		argument_value, ok = v.(f32)
-		if !ok {
-			return nil, core.Runtime_Error {
-				kind = .Expected_Number,
-				message = fmt.aprint("Argument %d: Expected Number", i),
-			}
-		}
-
-		result -= argument_value
+		argument_value = parse_f32(v) or_return
+		accum -= argument_value
 	}
 
-	return core.LiteralValue(result), nil
+	result = core.LiteralValue(accum)
+	err = nil
+	return
 }
 
 
@@ -100,25 +82,22 @@ multiplication :: proc(
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
 ) -> (
-	Maybe(core.Atom),
-	core.Error,
+	result: Maybe(core.Atom),
+	err: core.Error,
 ) {
 	if len(values) == 0 do return core.LiteralValue(1), nil
 
-	result: f32 = 1
+	argument_value: f32
+	accum: f32 = 1
 	for v, i in values {
 
-		argument_value, ok := v.(f32)
-		if !ok {
-			return nil, core.Runtime_Error {
-				kind = .Expected_Number,
-				message = fmt.aprint("Argument %d: Expected Number", i),
-			}
-		}
-		result *= argument_value
+		argument_value = parse_f32(v) or_return
+		accum *= argument_value
 	}
 
-	return core.LiteralValue(result), nil
+	result = core.LiteralValue(accum)
+	err = nil
+	return
 }
 
 create_division :: proc() -> LambdaFunction {
@@ -131,43 +110,48 @@ division :: proc(
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
 ) -> (
-	Maybe(core.Atom),
-	core.Error,
+	result: Maybe(core.Atom),
+	err: core.Error,
 ) {
 	assert(len(values) > 0, "Required 1 or more operands")
 
 	if len(values) == 1 {
-		val := values[0].(f32)
-		if val == 0 {
-			return nil, core.Runtime_Error {
-				kind = .Division_By_Zero,
-				message = "Division by Zero Error",
-			}
-		}
+		val := parse_f32(values[0]) or_return
+		zero_value_assertion(val) or_return
 
 		return LiteralValue(1 / val), nil
 	}
 
-	result: f32 = values[0].(f32)
+	argument_value: f32
+	accum: f32 = parse_f32(values[0]) or_return
 	for v, i in values[1:] {
+		argument_value = parse_f32(v) or_return
+		zero_value_assertion(argument_value) or_return
 
-		argument_value, ok := v.(f32)
-		if !ok {
-			return nil, core.Runtime_Error {
-				kind = .Expected_Number,
-				message = fmt.aprint("Argument %d: Expected Number", i),
-			}
-		}
-
-		if argument_value == 0 {
-			return nil, core.Runtime_Error {
-				kind = .Division_By_Zero,
-				message = "Division by Zero Error",
-			}
-		}
-
-		result /= argument_value
+		accum /= argument_value
 	}
 
-	return core.LiteralValue(result), nil
+	result = core.LiteralValue(accum)
+	err = nil
+	return
+}
+
+zero_value_assertion :: proc(val: f32) -> (err: core.Error) {
+	if val != 0 do return
+
+	return core.Runtime_Error{kind = .Division_By_Zero, message = "Division by Zero Error"}
+}
+
+parse_f32 :: proc(literal: LiteralValue) -> (result: f32, err: core.Error) {
+
+	ok: bool
+	result, ok = literal.(f32)
+	if !ok {
+		err = core.Runtime_Error {
+			kind    = .Expected_Number,
+			message = fmt.aprintf("Argument %s: Expected type Number.", literal),
+		}
+	}
+
+	return
 }

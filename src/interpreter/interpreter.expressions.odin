@@ -50,8 +50,9 @@ evaluate_variable :: proc(
 		err = Runtime_Error {
 			kind    = .Variable_Not_Found,
 			token   = var.name,
-			message = fmt.aprint("Variable %s not found", var.name),
+			message = fmt.aprintf("Variable %s not found", var.name),
 		}
+		return
 	}
 
 	result = Result(val)
@@ -104,16 +105,22 @@ evaluate_lamba_call :: proc(
 			}
 			return
 		}
-	} else if lambda, ok = call.args[0].(LambdaExpression); ok {
-		func = evaluate_lambda_expression(lambda, e) or_return
-		call_args = call_args[1:] // remove the lambda definition from arguments list
 	} else {
-		err = Runtime_Error {
-			kind    = .Lambda_Call_Mismatch,
-			token   = call.identifier.lexeme,
-			message = "First argument of the lambda call must be a lambda declaration.",
+		if len(call.args) > 0 {
+			lambda, ok = call.args[0].(LambdaExpression)
 		}
-		return
+
+		if ok {
+			func = evaluate_lambda_expression(lambda, e) or_return
+			call_args = call_args[1:] // remove the lambda definition from arguments list
+		} else {
+			err = Runtime_Error {
+				kind    = .Lambda_Call_Mismatch,
+				token   = call.identifier.lexeme,
+				message = "First argument of the lambda call must be a lambda declaration.",
+			}
+			return
+		}
 	}
 
 	// -1 means the runtime function will validate the params
@@ -133,9 +140,10 @@ evaluate_lamba_call :: proc(
 
 
 	args := make([dynamic]LiteralValue)
+	defer delete(args)
 	for arg in call_args {
-		result = evaluate_expression(arg, e) or_return
-		a, is_literal := result.?.(LiteralValue)
+		arg_result := evaluate_expression(arg, e) or_return
+		a, is_literal := arg_result.?.(LiteralValue)
 		if !is_literal {
 			result = nil
 			err = Runtime_Error {
