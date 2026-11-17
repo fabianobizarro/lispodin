@@ -33,6 +33,7 @@ Runtime_Error_Kind :: enum u32 {
 	Variable_Not_Found,
 	Expected_Number,
 	Division_By_Zero,
+	LiteralValue_Parsing_Error,
 }
 
 Runtime_Error :: struct {

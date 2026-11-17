@@ -117,7 +117,7 @@ division :: proc(
 
 	if len(values) == 1 {
 		val := parse_f32(values[0]) or_return
-		zero_value_assertion(val) or_return
+		check_division_by_zero(val) or_return
 
 		return LiteralValue(1 / val), nil
 	}
@@ -126,7 +126,7 @@ division :: proc(
 	accum: f32 = parse_f32(values[0]) or_return
 	for v, i in values[1:] {
 		argument_value = parse_f32(v) or_return
-		zero_value_assertion(argument_value) or_return
+		check_division_by_zero(argument_value) or_return
 
 		accum /= argument_value
 	}
@@ -136,7 +136,7 @@ division :: proc(
 	return
 }
 
-zero_value_assertion :: proc(val: f32) -> (err: core.Error) {
+check_division_by_zero :: proc(val: f32) -> (err: core.Error) {
 	if val != 0 do return
 
 	return core.Runtime_Error{kind = .Division_By_Zero, message = "Division by Zero Error"}
@@ -144,12 +144,16 @@ zero_value_assertion :: proc(val: f32) -> (err: core.Error) {
 
 parse_f32 :: proc(literal: LiteralValue) -> (result: f32, err: core.Error) {
 
+
 	ok: bool
 	result, ok = literal.(f32)
 	if !ok {
 		err = core.Runtime_Error {
 			kind    = .Expected_Number,
-			message = fmt.aprintf("Argument %s: Expected type Number.", literal),
+			message = fmt.aprintf(
+				"Argument '%s': Expected type Number.",
+				core.literal_to_string(literal),
+			),
 		}
 	}
 

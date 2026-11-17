@@ -1,6 +1,7 @@
 #+ private
 package interpreter
 
+import "../core"
 import env "../environment"
 import "core:fmt"
 import "core:strings"
@@ -65,22 +66,31 @@ evaluate_print :: proc(
 		exp := evaluate_expression(s, e) or_return
 		atom, _ := exp.?
 
-		write_builder(&builder, atom)
+		write_builder(&builder, atom) or_return
 	}
 
-	// todo:  is there a better way to write to stdout?
 	fmt.print(strings.to_string(builder))
 
 	result = nil
 	return
 }
 
-write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) {
+write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) -> (err: Error) {
 
-	res, ok := atom.?
+	raw: Atom
+	ok: bool
+	literal: LiteralValue
+
+	raw, ok = atom.?
 	if !ok do return
 
-	literal := res.(LiteralValue)
+	literal, ok = raw.(LiteralValue)
+	if !ok {
+		return Runtime_Error {
+			kind = .LiteralValue_Parsing_Error,
+			message = fmt.aprint("Unable to parse literal value for ", atom),
+		}
+	}
 
 	switch v in literal {
 	case f32:
@@ -90,6 +100,8 @@ write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) {
 	case bool:
 		strings.write_string(builder, v ? "true" : "false")
 	}
+
+	return nil
 }
 
 

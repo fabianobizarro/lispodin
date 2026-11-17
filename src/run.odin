@@ -56,9 +56,11 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 	tokens: []core.Token
 	ast: []core.Statement
 	errors: []core.Error
+	defer delete(errors)
+	defer delete(tokens)
+	defer delete(ast)
 
 	tokens, errors = scanner.tokenize(source)
-	defer delete(tokens)
 
 	if len(errors) > 0 {
 		display_errors(errors)
@@ -81,8 +83,8 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 	if debug_flag do fmt.println("Evaluation: ")
 
-	if ok do fmt.println(result)
-	else do display_error(error)
+	if error != nil do display_error(error)
+	else do fmt.println(result)
 }
 
 display_input :: proc(source: string) {
@@ -114,10 +116,13 @@ display_error :: proc(err: core.Error) {
 	switch e in err {
 	case core.Scanner_Error:
 		fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
+		delete(e.message)
 	case core.Parser_Error:
 		fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
+		delete(e.message)
 	case core.Runtime_Error:
 		fmt.printfln("[RuntimeError][%s] %s - %s", e.kind, e.token, e.message)
+		delete(e.message)
 	}
 }
 
