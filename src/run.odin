@@ -84,7 +84,7 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 	if debug_flag do fmt.println("Evaluation: ")
 
 	if error != nil do display_error(error)
-	else do fmt.println(result)
+	else if ok do fmt.println(result)
 }
 
 display_input :: proc(source: string) {
@@ -116,13 +116,10 @@ display_error :: proc(err: core.Error) {
 	switch e in err {
 	case core.Scanner_Error:
 		fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
-		delete(e.message)
 	case core.Parser_Error:
 		fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
-		delete(e.message)
 	case core.Runtime_Error:
 		fmt.printfln("[RuntimeError][%s] %s - %s", e.kind, e.token, e.message)
-		delete(e.message)
 	}
 }
 

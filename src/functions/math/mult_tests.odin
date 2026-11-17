@@ -1,6 +1,7 @@
 #+test
 package builtin_functions
 
+import core "../../core"
 import "core:testing"
 
 @(test)
@@ -78,4 +79,22 @@ multiplication_test_5 :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, nil)
 	testing.expect(t, ok)
 	testing.expect_value(t, value, 0)
+}
+
+@(test)
+multiplication_test_6 :: proc(t: ^testing.T) {
+	// arrange
+	values := [2]LiteralValue{2, "hello"}
+
+	// act
+	result, err := multiplication(nil, values[:], nil)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Expected_Number)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
 }

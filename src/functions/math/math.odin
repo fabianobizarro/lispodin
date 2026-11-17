@@ -25,10 +25,8 @@ sum :: proc(
 
 	argument_value: f32
 	accum: f32 = 0
-	for v, i in values {
-
+	for v in values {
 		argument_value = parse_f32(v) or_return
-
 		accum += argument_value
 	}
 
@@ -61,7 +59,7 @@ subtraction :: proc(
 	argument_value: f32
 	accum := parse_f32(values[0]) or_return
 
-	for v, i in values[1:] {
+	for v in values[1:] {
 		argument_value = parse_f32(v) or_return
 		accum -= argument_value
 	}
@@ -89,7 +87,7 @@ multiplication :: proc(
 
 	argument_value: f32
 	accum: f32 = 1
-	for v, i in values {
+	for v in values {
 
 		argument_value = parse_f32(v) or_return
 		accum *= argument_value
@@ -124,7 +122,7 @@ division :: proc(
 
 	argument_value: f32
 	accum: f32 = parse_f32(values[0]) or_return
-	for v, i in values[1:] {
+	for v in values[1:] {
 		argument_value = parse_f32(v) or_return
 		check_division_by_zero(argument_value) or_return
 

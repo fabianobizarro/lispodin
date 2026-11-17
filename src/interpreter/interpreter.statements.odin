@@ -1,7 +1,6 @@
 #+ private
 package interpreter
 
-import "../core"
 import env "../environment"
 import "core:fmt"
 import "core:strings"

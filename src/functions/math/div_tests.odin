@@ -94,3 +94,39 @@ division_test_6 :: proc(t: ^testing.T) {
 	testing.expect_value(t, runtime_err.message, "Division by Zero Error")
 	testing.expect(t, !has_value)
 }
+
+@(test)
+division_test_7 :: proc(t: ^testing.T) {
+	// arrange
+	values := [2]LiteralValue{"hello", 2}
+
+	// act
+	result, err := division(nil, values[:], nil)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Expected_Number)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+@(test)
+division_test_8 :: proc(t: ^testing.T) {
+	// arrange
+	values := [2]LiteralValue{10, "hello"}
+
+	// act
+	result, err := division(nil, values[:], nil)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Expected_Number)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
