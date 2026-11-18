@@ -7,6 +7,7 @@ This document describes the Lisp-like language implemented by the interpreter in
 The language is a minimal, parenthesized, prefix-notation language inspired by Scheme and Lisp. Programs are made of **forms** (parenthesized lists) and **atoms** (literals and identifiers). The interpreter reads source text, tokenizes it, parses it into an AST, and evaluates the result.
 
 Key characteristics:
+
 - **Prefix notation:** `(operator arg1 arg2 ...)`
 - **Dynamic typing:** values are one of `f32`, `string`, `bool`, or `lambda`.
 - **Lexical scoping:** lambdas capture the environment where they are defined.
@@ -14,28 +15,31 @@ Key characteristics:
 
 ## 2. Data Types
 
-| Type | Description | Literal Example |
-|------|-------------|-----------------|
-| `number` | 32-bit floating point (`f32`) | `42`, `3.14`, `-7` |
-| `string` | Double-quoted text | `"hello"` |
-| `bool` | Boolean value | `true`, `false` |
-| `lambda` | Anonymous function value | `(lambda (x) (+ x 1))` |
+| Type     | Description                   | Literal Example        |
+| -------- | ----------------------------- | ---------------------- |
+| `number` | 32-bit floating point (`f32`) | `42`, `3.14`, `-7`     |
+| `string` | Double-quoted text            | `"hello"`              |
+| `bool`   | Boolean value                 | `true`, `false`        |
+| `lambda` | Anonymous function value      | `(lambda (x) (+ x 1))` |
 
 ### 2.1 Numbers
 
-Numbers are parsed as `f32`. Integer-looking literals are still stored as floating-point values.
+Numbers are parsed as `f32`. Integer-looking literals are still stored as floating-point values. An explicit leading `+` or `-` is also accepted as part of a numeric literal.
 
 ```lisp
 10      ; => 10.0
 3.14    ; => 3.14
+-7      ; => -7.0
++5      ; => 5.0
 ```
 
 ### 2.2 Strings
 
-Strings are delimited by double quotes (`"`). They may contain spaces and span a single line.
+Strings are delimited by double quotes (`"`). They may contain spaces and span a single line. The surrounding quotes are not included in the stored value. The escape sequences `\n`, `\t`, `\r`, and `\\` are converted to their corresponding characters when printed.
 
 ```lisp
 "hello world"
+"line one\nline two"
 ```
 
 ### 2.3 Booleans
@@ -50,6 +54,7 @@ false
 ### 2.4 Lambda Values
 
 A lambda value is a first-class function object that carries:
+
 - its parameter list,
 - its body (a list of statements),
 - its arity,
@@ -61,30 +66,28 @@ A lambda value is a first-class function object that carries:
 
 The scanner produces the following token kinds:
 
-| Token | Lexeme |
-|-------|--------|
-| `LEFT_PAREN` | `(` |
-| `RIGHT_PAREN` | `)` |
-| `PLUS` | `+` |
-| `MINUS` | `-` |
-| `STAR` | `*` |
-| `SLASH` | `/` |
-| `NUMBER` | sequence of digits, optional `.` and fraction |
-| `STRING` | `"..."` |
-| `TRUE` | `true` |
-| `FALSE` | `false` |
-| `IDENTIFIER` | alphabetic identifier |
-| `DEF` | `def` |
-| `PRINT` | `print` |
-| `LAMBDA` | `lambda` |
-| `EOF` | end of input |
+| Token         | Lexeme                                        |
+| ------------- | --------------------------------------------- |
+| `LEFT_PAREN`  | `(`                                           |
+| `RIGHT_PAREN` | `)`                                           |
+| `NUMBER`      | sequence of digits, optional `.` and fraction |
+| `STRING`      | `"..."`                                       |
+| `TRUE`        | `true`                                        |
+| `FALSE`       | `false`                                       |
+| `IDENTIFIER`  | identifier token                              |
+| `DEF`         | `def`                                         |
+| `PRINT`       | `print`                                       |
+| `LAMBDA`      | `lambda`                                      |
+| `EOF`         | end of input                                  |
+
+The operator symbols `+`, `-`, `*`, and `/` are tokenized as `IDENTIFIER` tokens, not as separate operator token kinds.
 
 ### 3.2 Identifiers
 
-Identifiers consist of alphabetic characters only. Digits, underscores, hyphens, and other characters are **not** allowed in identifiers.
+Identifiers are sequences of characters that are not control characters, whitespace, or delimiters. They may contain letters, digits, and many punctuation characters such as `?`, `_`, `-`, `!`, `*`, `=`, `/`, `+`, and `.`. The characters `(`, `)`, `"`, `;`, space, tab, carriage return, and newline are **not** allowed inside an identifier.
 
-Valid identifiers: `x`, `foo`, `bar`
-Invalid identifiers: `x1`, `foo-bar`, `_bar`
+Valid identifiers: `x`, `foo`, `x1`, `foo-bar`, `_bar`, `even?`, `set!`, `*global*`
+Invalid identifiers: `(foo)`, `"bar"`, `foo;bar`
 
 ### 3.3 Keywords
 
@@ -98,11 +101,16 @@ The following names are reserved and cannot be used as variable names:
 
 ### 3.4 Whitespace
 
-Whitespace characters (` `, `\t`, `\r`) and newlines (`\n`) separate tokens. Newlines are counted for line tracking but have no syntactic meaning.
+Space (` `), tab (`\t`), and carriage return (`\r`) are treated as whitespace and skipped. Newlines (`\n`) increment the line counter for error reporting and also separate tokens.
 
 ### 3.5 Comments
 
-There is no comment syntax in this language.
+A semicolon (`;`) begins a comment that runs to the end of the current line. Comments are skipped by the scanner.
+
+```lisp
+(def x 10) ; this is a comment
+(+ x 5)    ; => 15.0
+```
 
 ## 4. Program Structure
 
@@ -144,11 +152,11 @@ Binds the identifier `name` to the value of `expr` in the current environment. T
 (print expr ...)
 ```
 
-Evaluates each argument in order and prints each result to standard output, followed by a newline.
+Evaluates each argument in order, concatenates their string representations, and prints the result to standard output. No extra spaces or newline are appended automatically; use string literals or the `newline` built-in to add line breaks.
 
 ```lisp
 (print "hello")
-(print "sum is" (+ 1 2))
+(print "sum is" (+ 1 2) (newline))
 ```
 
 ## 6. Expressions
@@ -165,7 +173,7 @@ true
 
 ### 6.2 Variables
 
-An identifier evaluates to the value bound to that name in the current or enclosing environment. If the name is not bound, the interpreter panics.
+An identifier evaluates to the value bound to that name in the current or enclosing environment. If the name is not bound, evaluation returns a runtime error.
 
 ```lisp
 x
@@ -178,7 +186,7 @@ my-function
 (function arg1 arg2 ...)
 ```
 
-The first element after the opening parenthesis is evaluated as a function position. It must resolve to a `lambda` value. The remaining elements are evaluated as arguments and passed to the function.
+The first element after the opening parenthesis is an identifier that must resolve to a `lambda` value. The remaining elements are evaluated as arguments and passed to the function.
 
 Arguments are evaluated left-to-right in the current environment before the function body runs.
 
@@ -216,7 +224,7 @@ Parameter list size is limited to 100 parameters.
 
 ## 8. Built-in Functions
 
-Built-in functions are variadic (`arity = -1`) and are stored in the global environment under their operator symbols.
+Built-in functions are variadic (`arity = -1`) and are stored in the global environment under their operator symbols or names.
 
 ### 8.1 `+` — Addition
 
@@ -238,7 +246,7 @@ Returns the sum of all arguments. With zero arguments, returns `0.0`. All argume
 (- number ...)
 ```
 
-**Current implementation bug:** The built-in subtraction function is registered but its `call` handler points to the addition implementation, so `(- a b ...)` currently behaves like `(+ a b ...)`.
+Subtracts the remaining arguments from the first. With one argument, returns its negation. All arguments must be numbers.
 
 ### 8.3 `*` — Multiplication
 
@@ -246,7 +254,13 @@ Returns the sum of all arguments. With zero arguments, returns `0.0`. All argume
 (* number ...)
 ```
 
-**Current implementation bug:** The built-in multiplication function is registered but its `call` handler points to the addition implementation, so `(* a b ...)` currently behaves like `(+ a b ...)`.
+Returns the product of all arguments. With zero arguments, returns `1.0`. All arguments must be numbers.
+
+```lisp
+(*)             ; => 1.0
+(* 2 3)         ; => 6.0
+(* 2 3 4)       ; => 24.0
+```
 
 ### 8.4 `/` — Division
 
@@ -254,7 +268,25 @@ Returns the sum of all arguments. With zero arguments, returns `0.0`. All argume
 (/ number ...)
 ```
 
-**Current implementation bug:** The built-in division function is registered but its `call` handler points to the addition implementation, so `(/ a b ...)` currently behaves like `(+ a b ...)`.
+Divides the first argument by the remaining arguments in order. With one argument, returns its reciprocal (`1 / x`). All arguments must be numbers. Division by zero produces a runtime error.
+
+```lisp
+(/ 10 2)        ; => 5.0
+(/ 1 4)         ; => 0.25
+(/ 2)           ; => 0.5
+```
+
+### 8.5 `newline` — Newline String
+
+```lisp
+(newline)
+```
+
+Returns the string `"\n"`. It is typically used with `print` to produce line breaks.
+
+```lisp
+(print "hello" (newline))
+```
 
 ## 9. Evaluation Rules
 
@@ -270,7 +302,7 @@ Returns the sum of all arguments. With zero arguments, returns `0.0`. All argume
 
 The language uses lexical scoping with closures.
 
-- The global environment is created at startup and contains the built-in math functions.
+- The global environment is created at startup and contains the built-in math functions and `newline`.
 - `def` binds names in the current environment.
 - Lambda bodies run in a new environment whose parent is the lambda's closure.
 - A lambda can access variables from its enclosing scopes through its closure.
@@ -286,24 +318,28 @@ The language uses lexical scoping with closures.
 
 ## 11. Error Handling
 
-The interpreter uses panics for error conditions. There is no exception-catching mechanism.
+The interpreter uses a structured error type (`core.Error`) for scanner, parser, and runtime errors. These errors are returned through the evaluation pipeline and reported to the user. There is no exception-catching mechanism.
 
-Errors that cause panics include:
+Errors reported through this mechanism include:
 
-- Unknown characters during tokenization
 - Unterminated string literals
+- Failed number literal parsing
 - Unexpected tokens during parsing
 - Use of an unbound variable
 - Calling a non-function value
 - Wrong number of arguments for a lambda
 - Passing a non-number argument to a math function
-- Division by zero (in the intended division implementation)
+- Division by zero
 - Type mismatches during evaluation
+
+Some internal invariants are still enforced with assertions, which panic if violated.
 
 ## 12. EBNF Grammar
 
 ```ebnf
-program        ::= statement* EOF
+program        ::= (statement | comment)* EOF
+
+comment        ::= ";" ANY* (NEWLINE | EOF)
 
 statement      ::= def-statement
                 |  print-statement
@@ -327,11 +363,13 @@ lambda-expression ::= "(" "lambda" "(" IDENTIFIER* ")" statement* ")"
 function-call  ::= "(" IDENTIFIER expression* ")"
                 |  "(" lambda-expression expression* ")"
 
-IDENTIFIER     ::= ALPHA+
-NUMBER         ::= DIGIT+ ("." DIGIT+)?
+IDENTIFIER     ::= (ALPHA | SYMBOL) (ALPHA | DIGIT | SYMBOL)*
+NUMBER         ::= ("+" | "-")? DIGIT+ ("." DIGIT+)?
 STRING         ::= "\"" ANY* "\""
 ALPHA          ::= "a".."z" | "A".."Z"
 DIGIT          ::= "0".."9"
+NEWLINE        ::= "\n"
+SYMBOL         ::= "?" | "_" | "-" | "!" | "*" | "=" | "/" | "+" | "." | graphic-character
 ```
 
 ## 13. Examples
@@ -340,7 +378,7 @@ DIGIT          ::= "0".."9"
 
 ```lisp
 (+ 10 10)                 ; => 20.0
-(+ 10 (* 2 3))            ; => 16.0 (intended; current * bug affects result)
+(+ 10 (* 2 3))            ; => 16.0
 ```
 
 ### Variables
@@ -348,7 +386,7 @@ DIGIT          ::= "0".."9"
 ```lisp
 (def r 10)
 (def pi 3.14)
-(print (* pi (* r r)))    ; prints intended area (current * bug affects result)
+(print (* pi (* r r)) (newline))    ; prints area
 ```
 
 ### Lambdas
@@ -368,25 +406,11 @@ DIGIT          ::= "0".."9"
 
 ## 14. Known Limitations and Bugs
 
-1. **Broken built-in operators:** `-`, `*`, and `/` are registered but their call handlers incorrectly point to the addition implementation.
-   - [ ] **TASK:** Fix `create_subtraction`, `create_multiplication`, and `create_division` in `src/functions/math/math.odin` to use their own `call` handlers.
-2. **No comparison operators:** `==`, `<`, `>`, `<=`, `>=` are not implemented.
+1. **No comparison operators:** `==`, `<`, `>`, `<=`, `>=` are not implemented.
    - [ ] **TASK:** Add comparison operators to the scanner, parser, global environment, and built-in functions.
-3. **No conditionals:** `if`, `cond`, and logical operators are not implemented.
+2. **No conditionals:** `if`, `cond`, and logical operators are not implemented.
    - [ ] **TASK:** Add `if`/`cond` special forms and logical operators (`and`, `or`, `not`).
-4. **No lists or pairs:** There are no cons cells, lists, or sequence data structures beyond function argument lists.
+3. **No lists or pairs:** There are no cons cells, lists, or sequence data structures beyond function argument lists.
    - Known limitation. We won't touch lists for now.
-5. **No comments:** The language has no comment syntax.
-   - [ ] **TASK:** Add comment syntax (e.g., `;` to end of line) to the scanner.
-6. **Limited identifiers:** Identifiers may contain only alphabetic characters.
-   - [ ] **TASK:** Expand identifier scanning to support digits, hyphens, underscores, and other common identifier characters, and add tests.
-7. **No REPL:** The REPL is not implemented.
-   - [ ] **TASK:** Implement the REPL in `src/repl/repl.odin` and wire it into `src/main.odin`.
-8. **String literal bug:** String literals include the surrounding quote characters in the stored value.
-   - [ ] **TASK:** Fix `read_string` in `src/scanner/internal_scanner.odin` to strip surrounding quotes.
-9. **No error recovery:** Most errors panic and terminate the interpreter.
-   - [ ] **TASK:** Introduce a structured error-handling mechanism so the interpreter can report errors without panicking.
-10. **Negative numbers not supported:** A leading `-` is always treated as the subtraction operator, so literals like `-5` cannot be parsed.
-    - [ ] **TASK:** Add support for negative numeric literals in the scanner and parser.
-11. **No I/O beyond `print`:** There are no file, network, or input operations.
-    - Known limitation. We won't touch I/O for now.
+4. **No I/O beyond `print` and the REPL:** There are no file, network, or input operations.
+   - Known limitation. We won't touch I/O for now.

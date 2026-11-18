@@ -23,7 +23,6 @@ read_identifier :: proc(s: ^ScannerContext) {
 
 	for is_valid_rune(peek(s)) do advance(s)
 
-
 	text := s.source[s.start:s.current]
 	token_type, ok := core.Keywords[text]
 	if !ok do token_type = .IDENTIFIER

@@ -50,47 +50,79 @@ run_file :: proc(file: ^os.File) {
 run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 
-	if debug_flag {
-		fmt.println("\nGlobal Env")
-		print_environment(e)
-		fmt.println()
-	}
+	if debug_flag do display_environment(e)
+	if debug_flag do display_input(source)
 
-	if debug_flag {
-
-		fmt.println("Input: ", source)
-		fmt.println()
-	}
-
-	tokens := scanner.tokenize(source)
+	tokens: []core.Token
+	ast: []core.Statement
+	errors: []core.Error
+	defer delete(errors)
 	defer delete(tokens)
+	defer delete(ast)
 
-	if debug_flag {
-		fmt.println("Tokens")
-		for t in tokens {
-			fmt.println(t)
-		}
-		fmt.println()
+	tokens, errors = scanner.tokenize(source)
+
+	if len(errors) > 0 {
+		display_errors(errors)
+		return
 	}
 
-	ast := parser.parse(tokens)
+	if debug_flag do display_tokens(tokens)
 
-	if debug_flag {
+	ast, errors = parser.parse(tokens)
 
-		fmt.println("AST")
-		for s in ast do fmt.printfln("%#v", s)
-		fmt.println()
-
+	if len(errors) > 0 {
+		display_errors(errors)
+		return
 	}
 
-	result, ok := interpreter.evaluate(ast, e).?
+	if debug_flag do display_ast(ast)
+
+	result, error := interpreter.evaluate(ast, e)
+	_, ok := result.?
 
 	if debug_flag do fmt.println("Evaluation: ")
-	if ok do fmt.println(result)
 
+	if error != nil do display_error(error)
+	else if ok do fmt.println(result)
+}
 
-	if debug_flag {
-		fmt.println("\n Environment after execution:")
-		print_environment(e)
+display_input :: proc(source: string) {
+	fmt.println("Input: ", source)
+	fmt.println()
+}
+
+display_environment :: proc(e: ^core.RuntimeEnvironment) {
+	fmt.println("\nGlobal Env")
+	print_environment(e)
+	fmt.println()
+}
+
+display_tokens :: proc(tokens: []core.Token) {
+	fmt.println("Tokens")
+	for t in tokens {
+		fmt.println(t)
 	}
+	fmt.println()
+}
+
+display_ast :: proc(ast: []core.Statement) {
+	fmt.println("AST")
+	for s in ast do fmt.printfln("%#v", s)
+	fmt.println()
+}
+
+display_error :: proc(err: core.Error) {
+	switch e in err {
+	case core.Scanner_Error:
+		fmt.printfln("[ScannerError][line %d][%s] %s", e.line, e.kind, e.message)
+	case core.Parser_Error:
+		fmt.printfln("[ParsingError][%s] %s", e.kind, e.message)
+	case core.Runtime_Error:
+		fmt.printfln("[RuntimeError][%s] %s - %s", e.kind, e.token, e.message)
+	}
+}
+
+display_errors :: proc(errs: []core.Error) {
+	for err in errs do display_error(err)
 }

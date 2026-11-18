@@ -32,8 +32,10 @@ add_token :: proc(s: ^ScannerContext, token: Token) {
 }
 
 
-scan_token :: proc(s: ^ScannerContext) {
+scan_token :: proc(s: ^ScannerContext) -> (err: core.Error) {
 	assert(len(s.source) > 0)
+
+	err = nil
 
 	char := advance(s)
 	switch char {
@@ -51,12 +53,14 @@ scan_token :: proc(s: ^ScannerContext) {
 	case '\r':
 		break
 	case '"':
-		read_string(s)
+		read_string(s) or_return
 	case ';':
 		for peek(s) != '\n' && !is_at_end(s) do advance(s)
 	case:
-		if match.is_digit(char) do read_number(s)
-		else if (char == '-' || char == '+') && match.is_digit(peek(s)) do read_number(s)
+		if match.is_digit(char) do read_number(s) or_return
+		else if (char == '-' || char == '+') && match.is_digit(peek(s)) do read_number(s) or_return
 		else do read_identifier(s)
 	}
+
+	return
 }

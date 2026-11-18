@@ -6,18 +6,20 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 
-// Carriage return falls through into read_string, so a Windows newline
-// panics with "Unterminated string." Space, tab, and line feed are skipped.
+// Carriage return is whitespace, same as space, tab, and line feed.
+// tokenize returns no error.
 
 @(test)
 carriage_return_splits_names :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "foo\rbar"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -32,12 +34,14 @@ carriage_return_splits_names :: proc(t: ^testing.T) {
 @(test)
 crlf_splits_names :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "foo\r\nbar"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -52,12 +56,14 @@ crlf_splits_names :: proc(t: ^testing.T) {
 @(test)
 leading_carriage_return_is_blank :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "\r"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -68,12 +74,14 @@ leading_carriage_return_is_blank :: proc(t: ^testing.T) {
 @(test)
 crlf_before_a_form_is_blank :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "\r\n(+ 1)"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -91,12 +99,14 @@ crlf_before_a_form_is_blank :: proc(t: ^testing.T) {
 @(test)
 trailing_carriage_return_is_blank :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(+ 1)\r"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -114,12 +124,14 @@ trailing_carriage_return_is_blank :: proc(t: ^testing.T) {
 @(test)
 newline_splits_names :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "foo\nbar"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -134,12 +146,14 @@ newline_splits_names :: proc(t: ^testing.T) {
 @(test)
 carriage_return_inside_a_string_stays :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "\"a\rb\""
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -150,14 +164,13 @@ carriage_return_inside_a_string_stays :: proc(t: ^testing.T) {
 	testing.expect_value(t, result[1].type, .EOF)
 }
 
-// advance and peek cast one byte to a rune. match.is_alpha then classifies
-// that byte, and read_number asks strings.substring for a rune range using
-// the byte index. Multibyte letters come out as more than one token, and a
-// number after one can panic with "Failed to retrieve literal value".
+// A multibyte letter is one identifier. A number after it stays a number.
+// tokenize returns no error.
 
 @(test)
 unicode_letter_is_a_single_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string{"λ", "café"}
 	results: [len(names)][]core.Token
 	defer for result in results {
@@ -166,7 +179,8 @@ unicode_letter_is_a_single_identifier :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -183,6 +197,7 @@ unicode_letter_is_a_single_identifier :: proc(t: ^testing.T) {
 @(test)
 number_after_a_unicode_letter :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "α 10"
 	result: []core.Token
 	defer delete(result)
@@ -191,7 +206,8 @@ number_after_a_unicode_letter :: proc(t: ^testing.T) {
 	scanner.scanner_context_init(&s)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -204,9 +220,8 @@ number_after_a_unicode_letter :: proc(t: ^testing.T) {
 	testing.expect_value(t, result[2].type, .EOF)
 }
 
-// tokenize keeps its cursor and token buffer in package globals.
-// make test runs with ODIN_TEST_THREADS=2, so two calls overlap and
-// return each other's tokens.
+// Overlapping tokenize calls keep their own cursor and tokens.
+// make test runs with ODIN_TEST_THREADS=2.
 
 Scan_Check :: struct {
 	source:   string,
@@ -235,8 +250,8 @@ scan_side :: proc(pair: ^Scan_Pair, side: int) {
 	}
 
 	// One call per round. A loop here livelocks: tokenize resets the shared cursor.
-	tokens := scanner.tokenize(check.source)
-	if len(tokens) != check.want_len || tokens[1].lexeme != check.lexeme {
+	tokens, errs := scanner.tokenize(check.source)
+	if len(errs) != 0 || len(tokens) != check.want_len || tokens[1].lexeme != check.lexeme {
 		check.failures += 1
 	}
 	delete(tokens)

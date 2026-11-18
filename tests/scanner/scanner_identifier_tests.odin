@@ -21,12 +21,14 @@ import "core:testing"
 @(test)
 letter_number_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "x1"
 	results: []core.Token
 	defer delete(results)
 
 	// act
-	results = scanner.tokenize(program)
+	results, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect_value(t, len(results), 2)
@@ -38,12 +40,14 @@ letter_number_identifier :: proc(t: ^testing.T) {
 @(test)
 hifen_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "my-name"
 	results: []core.Token
 	defer delete(results)
 
 	// act
-	results = scanner.tokenize(program)
+	results, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect_value(t, len(results), 2)
@@ -55,12 +59,14 @@ hifen_identifier :: proc(t: ^testing.T) {
 @(test)
 question_mark_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "even?"
 	results: []core.Token
 	defer delete(results)
 
 	// act
-	results = scanner.tokenize(program)
+	results, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect_value(t, len(results), 2)
@@ -72,12 +78,14 @@ question_mark_identifier :: proc(t: ^testing.T) {
 @(test)
 underscore_identifier :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(print _int)"
 	results: []core.Token
 	defer delete(results)
 
 	// act
-	results = scanner.tokenize(program)
+	results, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect_value(t, len(results), 5)
@@ -90,6 +98,7 @@ underscore_identifier :: proc(t: ^testing.T) {
 @(test)
 identifier_letters :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string{"a", "A", "x", "n", "T", "foo", "bar", "Fabiano", "myname", "AbC"}
 	results: [len(names)][]core.Token
 	defer for result in results {
@@ -98,7 +107,8 @@ identifier_letters :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -115,6 +125,7 @@ identifier_letters :: proc(t: ^testing.T) {
 @(test)
 identifier_digits :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string {
 		"x1",
 		"X1",
@@ -147,11 +158,15 @@ identifier_digits :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
-	stuck_result = scanner.tokenize(stuck_program)
-	split_result = scanner.tokenize(split_program)
-	exponent_result = scanner.tokenize(exponent_program)
+	stuck_result, scan_errors = scanner.tokenize(stuck_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	split_result, scan_errors = scanner.tokenize(split_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	exponent_result, scan_errors = scanner.tokenize(exponent_program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	for name, i in names {
@@ -185,6 +200,7 @@ identifier_digits :: proc(t: ^testing.T) {
 @(test)
 identifier_hyphens :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string {
 		"my-name",
 		"foo-bar",
@@ -206,7 +222,8 @@ identifier_hyphens :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -223,6 +240,7 @@ identifier_hyphens :: proc(t: ^testing.T) {
 @(test)
 identifier_underscores :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string{"_", "_bar", "_a", "foo_bar", "foo_", "__", "a__b", "a_b_c", "__init__"}
 	results: [len(names)][]core.Token
 	defer for result in results {
@@ -231,7 +249,8 @@ identifier_underscores :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -248,6 +267,7 @@ identifier_underscores :: proc(t: ^testing.T) {
 @(test)
 identifier_question_marks :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string {
 		"?",
 		"?even",
@@ -267,7 +287,8 @@ identifier_question_marks :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -284,6 +305,7 @@ identifier_question_marks :: proc(t: ^testing.T) {
 @(test)
 identifier_mixed_characters :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string {
 		"is-even?",
 		"my_name-2?",
@@ -300,7 +322,8 @@ identifier_mixed_characters :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -317,6 +340,7 @@ identifier_mixed_characters :: proc(t: ^testing.T) {
 @(test)
 identifier_keywords_with_extra_characters :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	names := [?]string {
 		"define",
 		"printer",
@@ -342,7 +366,8 @@ identifier_keywords_with_extra_characters :: proc(t: ^testing.T) {
 
 	// act
 	for name, i in names {
-		results[i] = scanner.tokenize(name)
+		results[i], scan_errors = scanner.tokenize(name)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -359,6 +384,7 @@ identifier_keywords_with_extra_characters :: proc(t: ^testing.T) {
 @(test)
 identifier_keywords_and_numbers_stay_exact :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	cases := [?]struct {
 		program:       string,
 		kind:          core.TokenType,
@@ -396,7 +422,8 @@ identifier_keywords_and_numbers_stay_exact :: proc(t: ^testing.T) {
 
 	// act
 	for item, i in cases {
-		results[i] = scanner.tokenize(item.program)
+		results[i], scan_errors = scanner.tokenize(item.program)
+		testing.expect_value(t, len(scan_errors), 0)
 	}
 
 	// assert
@@ -416,6 +443,7 @@ identifier_keywords_and_numbers_stay_exact :: proc(t: ^testing.T) {
 @(test)
 identifier_stops_at_other_symbols :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	plus_program := "foo+bar"
 	plus_result: []core.Token
 	defer delete(plus_result)
@@ -449,14 +477,22 @@ identifier_stops_at_other_symbols :: proc(t: ^testing.T) {
 	defer delete(global_result)
 
 	// act
-	plus_result = scanner.tokenize(plus_program)
-	star_result = scanner.tokenize(star_program)
-	slash_result = scanner.tokenize(slash_program)
-	bang_result = scanner.tokenize(bang_program)
-	bang_name_result = scanner.tokenize(bang_name_program)
-	dot_result = scanner.tokenize(dot_program)
-	eq_result = scanner.tokenize(eq_program)
-	global_result = scanner.tokenize(global_program)
+	plus_result, scan_errors = scanner.tokenize(plus_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	star_result, scan_errors = scanner.tokenize(star_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	slash_result, scan_errors = scanner.tokenize(slash_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	bang_result, scan_errors = scanner.tokenize(bang_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	bang_name_result, scan_errors = scanner.tokenize(bang_name_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	dot_result, scan_errors = scanner.tokenize(dot_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	eq_result, scan_errors = scanner.tokenize(eq_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	global_result, scan_errors = scanner.tokenize(global_program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, plus_result != nil)
@@ -511,6 +547,7 @@ identifier_stops_at_other_symbols :: proc(t: ^testing.T) {
 @(test)
 identifier_leading_digit_is_a_number :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	one_program := "1x"
 	one_result: []core.Token
 	defer delete(one_result)
@@ -524,9 +561,12 @@ identifier_leading_digit_is_a_number :: proc(t: ^testing.T) {
 	defer delete(spaced_result)
 
 	// act
-	one_result = scanner.tokenize(one_program)
-	name_result = scanner.tokenize(name_program)
-	spaced_result = scanner.tokenize(spaced_program)
+	one_result, scan_errors = scanner.tokenize(one_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	name_result, scan_errors = scanner.tokenize(name_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	spaced_result, scan_errors = scanner.tokenize(spaced_program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, one_result != nil)
@@ -560,6 +600,7 @@ identifier_leading_digit_is_a_number :: proc(t: ^testing.T) {
 @(test)
 identifier_user_forms :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	x1_program := "(def x1 100)"
 	x1_result: []core.Token
 	defer delete(x1_result)
@@ -585,12 +626,18 @@ identifier_user_forms :: proc(t: ^testing.T) {
 	defer delete(print_even_result)
 
 	// act
-	x1_result = scanner.tokenize(x1_program)
-	name_result = scanner.tokenize(name_program)
-	even_result = scanner.tokenize(even_program)
-	print_x1_result = scanner.tokenize(print_x1_program)
-	print_name_result = scanner.tokenize(print_name_program)
-	print_even_result = scanner.tokenize(print_even_program)
+	x1_result, scan_errors = scanner.tokenize(x1_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	name_result, scan_errors = scanner.tokenize(name_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	even_result, scan_errors = scanner.tokenize(even_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	print_x1_result, scan_errors = scanner.tokenize(print_x1_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	print_name_result, scan_errors = scanner.tokenize(print_name_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	print_even_result, scan_errors = scanner.tokenize(print_even_program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, x1_result != nil)
@@ -674,12 +721,14 @@ identifier_user_forms :: proc(t: ^testing.T) {
 @(test)
 identifier_lambda_parameters :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := "(lambda (x1 my-name even?) (my-name))"
 	result: []core.Token
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -706,6 +755,7 @@ identifier_lambda_parameters :: proc(t: ^testing.T) {
 @(test)
 identifier_full_program :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	program := `(def x1 100)
 (def my-name "fabiano")
 (def even? false)
@@ -717,7 +767,8 @@ identifier_full_program :: proc(t: ^testing.T) {
 	defer delete(result)
 
 	// act
-	result = scanner.tokenize(program)
+	result, scan_errors = scanner.tokenize(program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, result != nil)
@@ -781,6 +832,7 @@ identifier_full_program :: proc(t: ^testing.T) {
 @(test)
 identifier_between_delimiters :: proc(t: ^testing.T) {
 	// arrange
+	scan_errors: []core.Error
 	parens_digit_program := "(x1)"
 	parens_digit_result: []core.Token
 	defer delete(parens_digit_result)
@@ -834,19 +886,32 @@ identifier_between_delimiters :: proc(t: ^testing.T) {
 	defer delete(pred_call_result)
 
 	// act
-	parens_digit_result = scanner.tokenize(parens_digit_program)
-	parens_hyphen_result = scanner.tokenize(parens_hyphen_program)
-	parens_pred_result = scanner.tokenize(parens_pred_program)
-	padded_result = scanner.tokenize(padded_program)
-	tabbed_result = scanner.tokenize(tabbed_program)
-	lines_result = scanner.tokenize(lines_program)
-	comment_result = scanner.tokenize(comment_program)
-	comment_line_result = scanner.tokenize(comment_line_program)
-	string_x1_result = scanner.tokenize(string_x1_program)
-	string_name_result = scanner.tokenize(string_name_program)
-	string_even_result = scanner.tokenize(string_even_program)
-	call_result = scanner.tokenize(call_program)
-	pred_call_result = scanner.tokenize(pred_call_program)
+	parens_digit_result, scan_errors = scanner.tokenize(parens_digit_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	parens_hyphen_result, scan_errors = scanner.tokenize(parens_hyphen_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	parens_pred_result, scan_errors = scanner.tokenize(parens_pred_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	padded_result, scan_errors = scanner.tokenize(padded_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	tabbed_result, scan_errors = scanner.tokenize(tabbed_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	lines_result, scan_errors = scanner.tokenize(lines_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	comment_result, scan_errors = scanner.tokenize(comment_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	comment_line_result, scan_errors = scanner.tokenize(comment_line_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	string_x1_result, scan_errors = scanner.tokenize(string_x1_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	string_name_result, scan_errors = scanner.tokenize(string_name_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	string_even_result, scan_errors = scanner.tokenize(string_even_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	call_result, scan_errors = scanner.tokenize(call_program)
+	testing.expect_value(t, len(scan_errors), 0)
+	pred_call_result, scan_errors = scanner.tokenize(pred_call_program)
+	testing.expect_value(t, len(scan_errors), 0)
 
 	// assert
 	testing.expect(t, parens_digit_result != nil)
