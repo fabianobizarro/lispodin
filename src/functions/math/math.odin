@@ -1,18 +1,18 @@
 package builtin_functions
 
 import core "../../core"
-import "core:fmt"
 
 Literal :: core.Atom
 LiteralValue :: core.LiteralValue
 LambdaExpression :: core.LambdaExpression
 LambdaFunction :: core.LambdaFunction
 
+parse_f32 :: core.parse_f32
+
 create_sum :: proc() -> LambdaFunction {
 	return {arity = -1, call = sum, closure = nil}
 }
 
-@(private)
 sum :: proc(
 	_: ^LambdaFunction,
 	values: []LiteralValue,
@@ -40,7 +40,6 @@ create_subtraction :: proc() -> LambdaFunction {
 	return {arity = -1, call = subtraction, closure = nil}
 }
 
-@(private)
 subtraction :: proc(
 	_: ^LambdaFunction,
 	values: []LiteralValue,
@@ -74,7 +73,6 @@ create_multiplication :: proc() -> LambdaFunction {
 	return {arity = -1, call = multiplication, closure = nil}
 }
 
-@(private)
 multiplication :: proc(
 	_: ^LambdaFunction,
 	values: []LiteralValue,
@@ -102,7 +100,6 @@ create_division :: proc() -> LambdaFunction {
 	return {arity = -1, call = division, closure = nil}
 }
 
-@(private)
 division :: proc(
 	_: ^LambdaFunction,
 	values: []LiteralValue,
@@ -138,22 +135,4 @@ check_division_by_zero :: proc(val: f32) -> (err: core.Error) {
 	if val != 0 do return
 
 	return core.Runtime_Error{kind = .Division_By_Zero, message = "Division by Zero Error"}
-}
-
-parse_f32 :: proc(literal: LiteralValue) -> (result: f32, err: core.Error) {
-
-
-	ok: bool
-	result, ok = literal.(f32)
-	if !ok {
-		err = core.Runtime_Error {
-			kind    = .Expected_Number,
-			message = fmt.aprintf(
-				"Argument '%s': Expected type Number.",
-				core.literal_to_string(literal),
-			),
-		}
-	}
-
-	return
 }

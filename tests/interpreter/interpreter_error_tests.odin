@@ -2,6 +2,7 @@ package interpreter_tests
 
 import core "../../src/core"
 import env "../../src/environment"
+import comp "../../src/functions/comp"
 import math "../../src/functions/math"
 import interpreter "../../src/interpreter"
 import parser "../../src/parser"
@@ -38,8 +39,9 @@ evaluate_source :: proc(
 	return interpreter.evaluate(statements, e)
 }
 
-// Creates a global environment with the built-in math functions bound,
-// the same way initialize_global_env does in src/global_env.odin.
+// Creates a global environment with the built-in math and comparison
+// functions bound, the same way initialize_global_env does in
+// src/global_env.odin.
 
 @(private)
 make_global_env :: proc(e: ^core.RuntimeEnvironment) {
@@ -48,6 +50,7 @@ make_global_env :: proc(e: ^core.RuntimeEnvironment) {
 	env.define(e, "-", math.create_subtraction())
 	env.define(e, "*", math.create_multiplication())
 	env.define(e, "/", math.create_division())
+	env.define(e, "=", comp.create_comparison_function())
 }
 
 // An unbound name reports Variable_Not_Found.
@@ -96,7 +99,7 @@ unbound_argument_reports_error :: proc(t: ^testing.T) {
 	delete(runtime_err.message)
 }
 
-// A non-number argument to a math function reports Expected_Number.
+// A non-number argument to a math function reports Expected_LiteralValue_Type.
 
 @(test)
 non_number_argument_reports_error :: proc(t: ^testing.T) {
@@ -112,8 +115,8 @@ non_number_argument_reports_error :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Expected_Number)
-	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect_value(t, runtime_err.kind, .Expected_LiteralValue_Type)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type NUMBER.")
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }
