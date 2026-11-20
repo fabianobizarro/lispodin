@@ -31,7 +31,7 @@ Runtime_Error_Kind :: enum u32 {
 	Unexpected_Statement,
 	Runtime_Or_Lambda_Expected,
 	Variable_Not_Found,
-	Expected_Number,
+	Expected_LiteralValue_Type,
 	Division_By_Zero,
 	LiteralValue_Parsing_Error,
 }

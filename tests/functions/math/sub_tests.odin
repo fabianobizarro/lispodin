@@ -1,8 +1,10 @@
-#+test
-package builtin_functions
+package math_functions_test
 
-import core "../../core"
+import core "../../../src/core"
+import math "../../../src/functions/math"
 import "core:testing"
+
+subtraction :: math.subtraction
 
 @(test)
 subtraction_test_0 :: proc(t: ^testing.T) {
@@ -92,8 +94,8 @@ subtraction_test_5 :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Expected_Number)
-	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect_value(t, runtime_err.kind, .Expected_LiteralValue_Type)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type NUMBER.")
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }
@@ -110,8 +112,8 @@ subtraction_test_6 :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Expected_Number)
-	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type Number.")
+	testing.expect_value(t, runtime_err.kind, .Expected_LiteralValue_Type)
+	testing.expect_value(t, runtime_err.message, "Argument 'hello': Expected type NUMBER.")
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }
