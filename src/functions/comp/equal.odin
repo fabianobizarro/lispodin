@@ -2,11 +2,6 @@ package comparison_functions
 
 import core "../../core"
 
-Literal :: core.Atom
-LiteralValue :: core.LiteralValue
-LambdaExpression :: core.LambdaExpression
-LambdaFunction :: core.LambdaFunction
-
 create_comparison_function :: proc() -> LambdaFunction {
 	return {arity = -1, call = equal, closure = nil}
 }
@@ -53,6 +48,7 @@ calculate_equal :: proc(
 
 		target := core.parse_literalvalue(v, T) or_return
 		accum = accum && (comp == target)
+		comp = target
 	}
 
 	result = LiteralValue(accum)

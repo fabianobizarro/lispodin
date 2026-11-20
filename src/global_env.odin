@@ -20,4 +20,8 @@ initialize_global_env :: proc(e: ^core.RuntimeEnvironment) {
 
 	// comparison functions
 	env.define(e, "=", comp.create_comparison_function())
+	env.define(e, ">", comp.create_greater_than_function())
+	env.define(e, ">=", comp.create_greater_than_equal_function())
+	env.define(e, "<", comp.create_less_than_function())
+	env.define(e, "<=", comp.create_less_than_equal_function())
 }

@@ -51,6 +51,10 @@ make_global_env :: proc(e: ^core.RuntimeEnvironment) {
 	env.define(e, "*", math.create_multiplication())
 	env.define(e, "/", math.create_division())
 	env.define(e, "=", comp.create_comparison_function())
+	env.define(e, ">", comp.create_greater_than_function())
+	env.define(e, ">=", comp.create_greater_than_equal_function())
+	env.define(e, "<", comp.create_less_than_function())
+	env.define(e, "<=", comp.create_less_than_equal_function())
 }
 
 // An unbound name reports Variable_Not_Found.
