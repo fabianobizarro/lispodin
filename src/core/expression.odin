@@ -5,6 +5,8 @@ Expression :: union {
 	VariableExpression,
 	LambdaCallExpression,
 	LambdaExpression,
+	// BeginExpression,
+	IfExpression,
 }
 
 // 1 2 3 4
@@ -32,4 +34,14 @@ LambdaCallExpression :: struct {
 LambdaExpression :: struct {
 	params: []Token,
 	body:   []Statement,
+}
+
+// BeginExpression :: struct {
+// 	statements: []Statement,
+// }
+
+IfExpression :: struct {
+	condition:   ^Expression,
+	then_branch: ^Expression,
+	else_branch: ^Expression,
 }

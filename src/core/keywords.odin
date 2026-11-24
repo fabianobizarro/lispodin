@@ -7,4 +7,5 @@ Keywords := map[string]TokenType {
 	"lambda" = .LAMBDA,
 	"true"   = .TRUE,
 	"false"  = .FALSE,
+	"if"     = .IF,
 }

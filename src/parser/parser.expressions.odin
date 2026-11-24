@@ -11,13 +11,15 @@ LiteralExpression :: core.LiteralExpression
 VariableExpression :: core.VariableExpression
 LambdaCallExpression :: core.LambdaCallExpression
 LambdaExpression :: core.LambdaExpression
+IfExpression :: core.IfExpression
 
 parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 
 	if match(p, .LAMBDA) do return parse_lambda_expression(p)
-	else if match(p, .LEFT_PAREN) do return parse_lambda_call_expression(p)
+	else if check_next(p, .IF) do return return_parse_if_expression(p)
 	else if match(p, .NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression(p)
 	else if match(p, .IDENTIFIER) do return parse_variable_expression(p)
+	else if match(p, .LEFT_PAREN) do return parse_lambda_call_expression(p)
 
 	exp = {}
 	err = Parser_Error {
@@ -27,6 +29,39 @@ parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 	return
 }
 
+return_parse_if_expression :: proc(p: ^Parser) -> (exp: IfExpression, err: Error) {
+
+	//if
+	consume(p, .LEFT_PAREN, "Expected '(' at the beginning of the expression") or_return
+	consume(p, .IF, "Expected 'if' keyword at the beginning of the expression") or_return
+
+	condition := parse_expression(p) or_return
+	then_branch := parse_expression(p) or_return
+	else_branch: ^Expression
+
+	if !check(p, .RIGHT_PAREN) {
+		else_branch = new(Expression)
+		else_branch^ = parse_expression(p) or_return
+	}
+
+	consume(
+		p,
+		.RIGHT_PAREN,
+		fmt.aprintf("Expected ')' at the end of the `if` expression, got `%s`", peek(p).lexeme),
+	) or_return
+
+
+	exp.condition = new(Expression)
+	exp.condition^ = condition
+
+	exp.then_branch = new(Expression)
+	exp.then_branch^ = then_branch
+
+	exp.else_branch = else_branch
+
+	err = nil
+	return
+}
 
 parse_lambda_expression :: proc(p: ^Parser) -> (exp: LambdaExpression, err: Error) {
 

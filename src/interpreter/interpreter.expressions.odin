@@ -25,6 +25,8 @@ evaluate_expression :: proc(
 		return evaluate_lamba_call(kind, e)
 	case LambdaExpression:
 		return evaluate_lambda_expression(kind, e)
+	case IfExpression:
+		return evaluate_if_expression(kind, e)
 	}
 
 	result = nil
@@ -35,6 +37,24 @@ evaluate_expression :: proc(
 	return
 }
 
+
+evaluate_if_expression :: proc(
+	exp: IfExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+	condition_eval := evaluate_expression(exp.condition^, e) or_return
+
+	if truthy(condition_eval) {
+		return evaluate_expression(exp.then_branch^, e)
+	} else if exp.else_branch != nil {
+		return evaluate_expression(exp.else_branch^, e)
+	}
+
+	return nil, nil
+}
 
 evaluate_variable :: proc(
 	var: VariableExpression,
