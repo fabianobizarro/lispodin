@@ -8,6 +8,7 @@ Expression :: union {
 	IfExpression,
 	PrintExpression,
 	DefineExpression,
+	BeginExpression,
 }
 
 // 1 2 3 4
@@ -60,4 +61,9 @@ PrintExpression :: struct {
 DefineExpression :: struct {
 	name:  Token,
 	value: ^Expression,
+}
+
+
+BeginExpression :: struct {
+	expressions: []Expression,
 }

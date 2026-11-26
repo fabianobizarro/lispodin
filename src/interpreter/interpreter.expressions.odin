@@ -32,16 +32,32 @@ evaluate_expression :: proc(
 		return evaluate_print(kind, e)
 	case core.DefineExpression:
 		return evaluate_define(kind, e)
+	case core.BeginExpression:
+		return evaluate_begin_expression(kind, e)
+	case:
+		result = nil
+		err = Runtime_Error {
+			kind    = .Unexpected_Expression,
+			message = "Unexpected Expression",
+		}
+		return
 	}
-
-	result = nil
-	err = Runtime_Error {
-		kind    = .Unexpected_Expression,
-		message = "Unexpected Expression",
-	}
-	return
 }
 
+evaluate_begin_expression :: proc(
+	exp: core.BeginExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+
+	for expression in exp.expressions {
+		result = evaluate_expression(expression, e) or_return
+	}
+
+	return
+}
 
 evaluate_if_expression :: proc(
 	exp: core.IfExpression,

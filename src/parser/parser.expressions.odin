@@ -17,25 +17,8 @@ LambdaExpression :: core.LambdaExpression
 IfExpression :: core.IfExpression
 PrintExpression :: core.PrintExpression
 DefineExpression :: core.DefineExpression
+BeginExpression :: core.BeginExpression
 
-// parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
-//
-// 	if check_next(p, .LAMBDA) do return parse_lambda_expression(p)
-// 	else if check_next(p, .IF) do return return_parse_if_expression(p)
-// 	else if check_next(p, .PRINT) do return parse_print_expression(p)
-// 	else if check_next(p, .DEF) do return parse_define_expression(p)
-// 	else if match(p, .LEFT_PAREN) do return parse_lambda_call_expression(p)
-// 	else if match(p, .IDENTIFIER) do return parse_variable_expression(p)
-// 	else if match(p, .NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression(p)
-//
-// 	exp = {}
-// 	err = Parser_Error {
-// 		kind    = .Unexpected_Expression,
-// 		message = "Unexpected Expression",
-// 	}
-// 	return
-// }
-//
 parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 
 	if match(p, .LEFT_PAREN) do return parse_block(p)
@@ -57,20 +40,27 @@ parse_block :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 	else if match(p, .DEF) do return parse_define_expression(p)
 	else if match(p, .LAMBDA) do return parse_lambda_expression(p)
 	else if match(p, .IF) do return return_parse_if_expression(p)
-	// else if match(p, .LEFT_PAREN) do return parse_block(p)
-	// else if match(p, .IDENTIFIER) do return parse_lambda_call_expression(p)
-	return parse_lambda_call_expression(p)
+	else if match(p, .BEGIN) do return parse_begin_expression(p)
+	else do return parse_lambda_call_expression(p)
 
-	// exp = {}
-	// err = Parser_Error {
-	// 	kind    = .Unexpected_Block_Expression,
-	// 	message = "Unexpected Block Expression",
-	// }
-	// return
 }
 
+parse_begin_expression :: proc(p: ^Parser) -> (exp: BeginExpression, err: Error) {
 
-parse_define_expression :: proc(p: ^Parser) -> (stmt: DefineExpression, err: Error) {
+	exps := make([dynamic]Expression)
+
+	for !check(p, .RIGHT_PAREN) {
+		append(&exps, parse_expression(p) or_return)
+	}
+
+	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
+
+	exp.expressions = exps[:]
+	err = nil
+	return
+}
+
+parse_define_expression :: proc(p: ^Parser) -> (exp: DefineExpression, err: Error) {
 	_ = previous(p)
 	name := advance(p)
 	value := parse_expression(p) or_return
@@ -78,14 +68,14 @@ parse_define_expression :: proc(p: ^Parser) -> (stmt: DefineExpression, err: Err
 	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
 
 	err = nil
-	stmt.name = name
-	stmt.value = new(Expression)
-	stmt.value^ = value
+	exp.name = name
+	exp.value = new(Expression)
+	exp.value^ = value
 
 	return
 }
 
-parse_print_expression :: proc(p: ^Parser) -> (stmt: PrintExpression, err: Error) {
+parse_print_expression :: proc(p: ^Parser) -> (exp: PrintExpression, err: Error) {
 
 	print_token := previous(p)
 	expressions := make([dynamic]Expression)
@@ -97,7 +87,7 @@ parse_print_expression :: proc(p: ^Parser) -> (stmt: PrintExpression, err: Error
 	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
 
 	err = nil
-	stmt = {
+	exp = {
 		token     = print_token,
 		arguments = expressions[:],
 	}
