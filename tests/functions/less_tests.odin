@@ -1,12 +1,12 @@
-package comparison_functions_test
+package runtime_functions_test
 
-import core "../../../src/core"
-import comparison "../../../src/functions/comp"
+import core "../../src/core"
+import runtime "../../src/functions"
 import "core:math"
 import "core:testing"
 
-create_less_than_function :: comparison.create_less_than_function
-less_than :: comparison.less_than
+create_less_than_function :: runtime.create_less_than_function
+less_than :: runtime.less_than
 
 // Unit tests for the "<" (less than) builtin. Scheme-style strictly
 // increasing chain: every argument must be < the next one. Numbers only:

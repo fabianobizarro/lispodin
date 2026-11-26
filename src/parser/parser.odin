@@ -11,7 +11,7 @@ Parser :: struct {
 }
 
 
-parse :: proc(tokens: []Token) -> (stmts: []Statement, errs: []core.Error) {
+parse :: proc(tokens: []Token) -> (exps: []Expression, errs: []core.Error) {
 
 	p: Parser = {
 		current = 0,
@@ -19,17 +19,17 @@ parse :: proc(tokens: []Token) -> (stmts: []Statement, errs: []core.Error) {
 	}
 
 	errors := make([dynamic]core.Error)
-	statements := make([dynamic]Statement)
+	expressions := make([dynamic]Expression)
 
 	for !is_at_end(&p) {
-		stmt, err := parse_statement(&p)
+		exp, err := parse_expression(&p)
 
 		if err != nil {
 			append(&errors, err)
 			advance(&p)
-		} else do append(&statements, stmt)
+		} else do append(&expressions, exp)
 
 	}
 
-	return statements[:], errors[:]
+	return expressions[:], errors[:]
 }

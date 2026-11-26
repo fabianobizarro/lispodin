@@ -2,11 +2,11 @@ package interpreter_tests
 
 import core "../../src/core"
 import env "../../src/environment"
-import comp "../../src/functions/comp"
-import math "../../src/functions/math"
+import runtime "../../src/functions"
 import interpreter "../../src/interpreter"
 import parser "../../src/parser"
 import scanner "../../src/scanner"
+import "core:math"
 import "core:testing"
 
 // Evaluates a source string end to end: tokenize, parse, then evaluate
@@ -28,33 +28,26 @@ evaluate_source :: proc(
 		return nil, scan_errors[0]
 	}
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	if len(parse_errors) > 0 {
 		return nil, parse_errors[0]
 	}
 
-	return interpreter.evaluate(statements, e)
+	return interpreter.evaluate(expressions, e)
 }
 
-// Creates a global environment with the built-in math and comparison
-// functions bound, the same way initialize_global_env does in
+// Creates a global environment with the runtime functions bound via the
+// shared registration proc, the same way initialize_global_env does in
 // src/global_env.odin.
 
 @(private)
 make_global_env :: proc(e: ^core.RuntimeEnvironment) {
 	env.init(e)
-	env.define(e, "+", math.create_sum())
-	env.define(e, "-", math.create_subtraction())
-	env.define(e, "*", math.create_multiplication())
-	env.define(e, "/", math.create_division())
-	env.define(e, "=", comp.create_comparison_function())
-	env.define(e, ">", comp.create_greater_than_function())
-	env.define(e, ">=", comp.create_greater_than_equal_function())
-	env.define(e, "<", comp.create_less_than_function())
-	env.define(e, "<=", comp.create_less_than_equal_function())
+	runtime.register_runtime_global_functions(e)
+	env.define(e, "pi", core.LiteralValue(f32(math.PI)))
 }
 
 // An unbound name reports Variable_Not_Found.
@@ -168,7 +161,7 @@ division_by_zero_single_operand_reports_error :: proc(t: ^testing.T) {
 }
 
 // An inline lambda called with the wrong number of arguments reports
-// Lambda_Arity_Mismatch.
+// Lambda_Arity_Mismatch, tagged "lambda_func" in the token field.
 
 @(test)
 inline_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
@@ -185,12 +178,14 @@ inline_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
 	_, has_value := result.?
 	testing.expect(t, ok)
 	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "lambda_func")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }
 
-// A call with no arguments and no bound name reports Lambda_Call_Mismatch
-// instead of indexing an empty argument list.
+// A call with an unbound operator name reports Variable_Not_Found: the
+// operator is evaluated before any call machinery runs.
 
 @(test)
 empty_call_reports_error :: proc(t: ^testing.T) {
@@ -206,17 +201,16 @@ empty_call_reports_error :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Lambda_Call_Mismatch)
+	testing.expect_value(t, runtime_err.kind, .Variable_Not_Found)
 	testing.expect_value(t, runtime_err.token, "x")
-	testing.expect_value(
-		t,
-		runtime_err.message,
-		"First argument of the lambda call must be a lambda declaration.",
-	)
+	testing.expect_value(t, runtime_err.message, "Variable x not found")
 	testing.expect(t, !has_value)
+	delete(runtime_err.message)
 }
 
-// Calling a name bound to a non-lambda value reports Lambda_Call_Mismatch.
+// Calling a name bound to a non-lambda value reports
+// Runtime_Or_Lambda_Expected. The operator's value is no longer echoed in
+// the token (empty string pinned as-is).
 
 @(test)
 calling_a_non_lambda_reports_error :: proc(t: ^testing.T) {
@@ -232,15 +226,38 @@ calling_a_non_lambda_reports_error :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Lambda_Call_Mismatch)
-	testing.expect_value(t, runtime_err.token, "x")
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
+	testing.expect_value(t, runtime_err.token, "")
+	testing.expect_value(t, runtime_err.message, "Unknown Lambda declaration")
+	testing.expect(t, !has_value)
+}
+
+// A call whose operator evaluates to no value (here: a two-argument if
+// with a falsy condition) reports a graceful error instead of crashing.
+// Regression pin: this used to panic before the missing control flow was
+// fixed in evaluate_lamba_call.
+
+@(test)
+call_operator_with_no_value_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((if false 1) 2)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
 	testing.expect_value(
 		t,
 		runtime_err.message,
-		"Can only call lambda functions. x does not seem to be a lambda.",
+		"Expected a variable or lambda definition as the call operator",
 	)
 	testing.expect(t, !has_value)
-	delete(runtime_err.message)
 }
 
 // Control: a valid expression returns the result and no error.
@@ -279,4 +296,495 @@ inline_lambda_call_returns_result :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, nil)
 	testing.expect(t, ok)
 	testing.expect_value(t, value, 1)
+}
+
+// The primary named-lambda flow: bind a lambda with def, then call it by
+// name. Two evaluations against the same environment (REPL-style), since a
+// multi-expression source still discards intermediate values.
+
+@(test)
+named_lambda_def_then_call_returns_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	_, def_err := evaluate_source("(def f (lambda (x) (* x x)))", &global_env)
+	testing.expect_value(t, def_err, nil)
+
+	result, err := evaluate_source("(f 7)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 49)
+}
+
+// Arity mismatch on a named lambda. The token is the uniform "lambda_func"
+// tag for both named and anonymous lambdas (pinned as-is).
+
+@(test)
+named_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	_, def_err := evaluate_source("(def f (lambda (x) x))", &global_env)
+	testing.expect_value(t, def_err, nil)
+
+	result, err := evaluate_source("(f 1 2)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "lambda_func")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// ---------------------------------------------------------------------------
+// sqrt — the first fixed-arity builtin
+// ---------------------------------------------------------------------------
+
+// Arity is enforced by the call machinery (not the handler). NOTE: the
+// token is empty because the builtin was created without a name — the
+// arity error carries func.name.
+
+@(test)
+sqrt_returns_root :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt 9)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 3)
+}
+
+@(test)
+sqrt_of_nested_call :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt (sqrt 16))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 2)
+}
+
+// sqrt's own hand-rolled type error (differs from the shared
+// parse_literalvalue message used by the other builtins).
+
+@(test)
+sqrt_string_argument_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt \"a\")", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Expected_LiteralValue_Type)
+	testing.expect_value(t, runtime_err.token, "")
+	testing.expect_value(t, runtime_err.message, "Argument 'a': Expected type NUMBER.")
+	testing.expect(t, !has_value)
+}
+
+@(test)
+sqrt_arity_enforced_by_caller :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt 4 9)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "sqrt")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// Negative input reports the dedicated .MathError kind end to end.
+
+@(test)
+sqrt_negative_argument_reports_math_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt -1)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .MathError)
+	testing.expect_value(t, runtime_err.token, "sqrt")
+	testing.expect_value(
+		t,
+		runtime_err.message,
+		"Can't calculate the square root of a negative number - -1",
+	)
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// A def whose value is a bodyless lambda reports the parse error from the
+// lambda body check.
+
+@(test)
+def_of_bodyless_lambda_reports_parse_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(def f (lambda (x)))", &global_env)
+
+	// assert
+	parser_err, ok := err.(core.Parser_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, parser_err.kind, .Lambda_Body_Expected)
+	testing.expect_value(t, parser_err.message, "Lambda body expected.")
+	testing.expect(t, !has_value)
+}
+
+// ---------------------------------------------------------------------------
+// coverage gaps found in review — arithmetic e2e, aliases, closures, values
+// ---------------------------------------------------------------------------
+
+@(test)
+subtraction_e2e_result :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(- 10 (* 2 3))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 4)
+}
+
+@(test)
+division_e2e_result :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(/ 10 2)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 5)
+}
+
+@(test)
+multiplication_identity_e2e :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(*)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 1)
+}
+
+// (newline) is a value form — the string "\n" — usable anywhere a string fits.
+
+@(test)
+newline_returns_newline_string :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(newline)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, "\n")
+}
+
+// The pi constant, registered alongside the runtime functions.
+
+@(test)
+pi_constant_geometry :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def r 10) (* pi (* r r)))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 314.15927)
+}
+
+// Zero-parameter lambdas parse and call.
+
+@(test)
+zero_param_lambda_call :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def f (lambda () 42)) (f))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 42)
+}
+
+// Lambdas cannot be passed as arguments — arguments must be literal values.
+// Pass them by name instead.
+
+@(test)
+lambda_as_argument_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((lambda (f) 1) (lambda (x) x))", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
+	testing.expect_value(t, runtime_err.message, "Expected a literal value or a lambda call.")
+	delete(runtime_err.message)
+}
+
+// The operator position accepts ANY expression — here a begin whose value
+// is a lambda.
+
+@(test)
+begin_result_as_call_operator :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((begin (lambda (x) (* x x))) 7)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 49)
+}
+
+// define is an alias for def; display is an alias for print.
+
+@(test)
+define_alias_binds_like_def :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (define x 5) x)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 5)
+}
+
+@(test)
+display_alias_returns_no_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(display)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
+	testing.expect(t, !has_value)
+}
+
+// A def rebinds an existing name.
+
+@(test)
+def_rebinds_name :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def x 1) (def x 2) x)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 2)
+}
+
+// Non-escaping closures work: a lambda body reads a variable from the
+// environment where the lambda was created (contrast with issue #23, where
+// a closure ESCAPING through a call result crashes).
+
+@(test)
+lambda_captures_outer_variable :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def y 10) ((lambda (x) (+ x y)) 5))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 15)
+}
+
+// A parameter shadows an outer binding with the same name.
+
+@(test)
+lambda_param_shadows_global :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def x 1) ((lambda (x) x) 99))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 99)
+}
+
+// Nested immediate calls with capture — the outer call's environment is
+// still alive while the inner call runs (the non-escaping closure case).
+
+@(test)
+nested_call_closures_still_alive :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((lambda (x) ((lambda (y) (+ x y)) 3)) 4)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 7)
+}
+
+// A multi-expression source discards intermediate values (documented in
+// LANGUAGE_SPECS.md section 4 — use begin to sequence with a value).
+
+@(test)
+multi_expression_source_discards_values :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(def x 10)\n(+ x 1)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
+	testing.expect(t, !has_value)
+}
+
+// print (like display) produces no value; (print) with no arguments also
+// prints nothing, keeping the test output clean.
+
+@(test)
+print_returns_no_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(print)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
+	testing.expect(t, !has_value)
 }

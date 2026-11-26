@@ -2,68 +2,96 @@
 
 A small Lisp interpreter written in [Odin](https://odin-lang.org/).
 
-It reads a Lisp-like program, tokenizes it, parses it into an AST, and evaluates the result. The language uses prefix notation: operators and function names come first, and forms are wrapped in parentheses.
+It reads a Lisp-like program, tokenizes it, parses it into an AST, and evaluates the result. The language is expression-oriented — everything is an expression — with Scheme-style chain comparisons, lazy `if`/`and`/`or`, closures, and a REPL.
 
 ```lisp
-(print (+ 10 10))
-(print (+ 20 10))
+(begin (def r 10)
+  (print "area: " (* pi (* r r)) (newline)))
 ```
 
 ## Status
 
-Early prototype. The lexer, parser, and evaluator exist, and nested arithmetic plus `print` run. Variable binding (`def`), lambdas, and loading source from a file are parsed or sketched but not finished. The program currently lives as a string in `src/main.odin`.
+Working prototype. Scanner, parser, and evaluator are implemented, along with:
 
-## Todo
+- **Arithmetic:** `+ - * /` (variadic), `sqrt` (with a `.MathError` for negatives), `pi` constant
+- **Comparisons:** `= > >= < <=` with Scheme monotonic-chain semantics; `=` supports numbers, strings, and booleans (type-homogeneous lists)
+- **Special forms:** `def`/`define`, `print`/`display`, `lambda`, `if` (lazy, optional else), `begin`, `and`/`or` (short-circuiting, value-returning)
+- **Functions:** named and anonymous lambdas, immediate calls, and computed operators (`((if c f g) x)`)
 
-- `>=` operator
-- `<=` operator
-- `==` operator
-- lambda
-- function call
+496 unit and end-to-end tests cover every builtin and special form (see `make test`).
 
+Known bugs (all with regression guards or ready-to-add pins): escaping closures crash (#23), `def` of a no-value form panics (#24), the lambda parameter limit is off by one (#25), and `def` names are not validated (#26). See `LANGUAGE_SPECS.md` §14.
 
 ## Language
 
-Forms are lists. A call is `(name arg ...)`. Numbers are `f32`. Strings use double quotes. `true` and `false` are boolean literals.
+Forms are lists. Numbers are `f32`. Strings use double quotes. `true`/`false` are booleans. Truthiness is C-style: `false`, `0`, `""` are falsy, everything else is truthy.
 
-| Form | Meaning | Evaluation |
-| --- | --- | --- |
-| `(+ a b ...)` | Addition | Implemented |
-| `(- a b ...)` | Subtraction | Implemented |
-| `(* a b ...)` | Multiplication | Implemented |
-| `(/ a b ...)` | Division | Implemented |
-| `(print expr ...)` | Print each argument | Implemented |
-| `(def name expr)` | Bind a name | Parsed, not evaluated |
-| `(lambda ...)` | Function | Keyword only |
+| Form | Meaning |
+| --- | --- |
+| `(+ a b ...)` | sum (variadic) |
+| `(- a b ...)` | subtraction fold; one arg negates |
+| `(* a b ...)` | product (variadic) |
+| `(/ a b ...)` | division fold; one arg reciprocates |
+| `(sqrt x)` | square root; negative input is a `.MathError` |
+| `(= a b ...)` | all equal — numbers, strings, or bools (first arg's type) |
+| `(> a b ...)` / `(>= ...)` | strictly / non-strictly decreasing chain |
+| `(< a b ...)` / `(<= ...)` | strictly / non-strictly increasing chain |
+| `(newline)` | the string `"\n"` |
+| `pi` | 3.1415927 |
+| `(def name expr)` / `(define ...)` | bind a name; produces no value |
+| `(print expr ...)` / `(display ...)` | print concatenation; produces no value |
+| `(lambda (params) body)` | function value |
+| `(if c t e?)` | lazy conditional; optional else |
+| `(begin e ...)` | sequence; value of the last form |
+| `(and e ...)` / `(or e ...)` | short-circuit; value of the last evaluated form |
+| `(op arg ...)` | call — the operator can be any expression evaluating to a lambda |
 
-Calls nest:
+Calls nest, and control flow composes with everything:
 
 ```lisp
-(print (+ 10 (* 2 3)))
+(+ 1 (if true 2 3))                                      ; => 3.0
+(and (>= -4 -10) (<= -4 10) (* -4 -4))                    ; => 16.0
+((if true (lambda (x) (* x 2)) (lambda (x) 0)) 21)        ; => 42.0
 ```
 
-`examples/sum.lisp` is a sample program. The interpreter does not load it yet.
+## Running
+
+```sh
+make run                      # runs src/main.odin's `program` constant
+odin run src -- examples/sum.scm   # evaluates a file and prints the result
+make && ./build/lisp_odin     # file mode + REPL
+```
+
+`examples/*.scm` are runnable sample programs.
 
 ## Layout
 
 ```
 src/
-  main.odin                 entry point and the hardcoded program
-  interpreter.odin          walks the AST and evaluates it
-  token/                    lexer: tokens, keywords, scanner
-  parser/                   recursive-descent parser
-  exp/                      expression AST (literals, calls, variables)
-  stmt/                     statement AST (print, def, expression)
-  builtin/functions/        +, -, *, /
-examples/
-  sum.lisp                  sample source, not wired up
+  main.odin              entry point: CLI flags, file mode / REPL dispatch
+  run.odin               file runner and REPL loop
+  repl/                  line editing and raw terminal handling
+  scanner/               lexer: tokens, keywords, identifier/number/string scanning
+  parser/                recursive-descent parser producing []Expression
+  interpreter/           evaluator (expressions only — no statement layer)
+  core/                  shared AST types, tokens, errors, helpers
+  environment/           lexical environments
+  functions/             flat runtime_functions package: one file per builtin,
+                         base.odin registers them all via register_runtime_global_functions
+  global_env.odin        global environment setup (+ pi)
+tests/
+  scanner/ parser/       per-phase suites
+  interpreter/           end-to-end suites: comparisons, if, begin/and/or,
+                         call machinery, sqrt
+  functions/             builtin unit suites (runtime_functions_test package)
+examples/                 sample .scm programs
 ```
 
 Pipeline:
 
-1. `token.tokenize` scans the source into tokens.
-2. `parser.parse` builds statements and expressions.
-3. `evaluate` runs print forms and builtin math calls.
+1. `scanner.tokenize` scans the source into tokens.
+2. `parser.parse` builds a flat list of expressions.
+3. `interpreter.evaluate` walks the AST; special forms dispatch in the parser, builtins are lambdas in the global environment.
 
 ## Build
 
@@ -99,8 +127,10 @@ Pushing a tag matching `vN.N.N` (for example, `v0.1.0`) triggers the same lint/t
 - `lisp_odin-linux-x64`
 - `lisp_odin-windows-x64.exe`
 
-Change the `program` string in `src/main.odin`, then `make run`, to try a different snippet. The binary prints the source, the token list, the AST, and the evaluation result.
-
 ## Editor
 
 `ols.json` configures [OLS](https://github.com/DanielGavin/ols) with a `src` collection for the language server.
+
+## Specification
+
+See [`LANGUAGE_SPECS.md`](LANGUAGE_SPECS.md) for the full language specification — grammar, evaluation rules, error kinds, and known limitations.

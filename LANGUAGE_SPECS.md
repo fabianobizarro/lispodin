@@ -9,9 +9,10 @@ The language is a minimal, parenthesized, prefix-notation language inspired by S
 Key characteristics:
 
 - **Prefix notation:** `(operator arg1 arg2 ...)`
+- **Everything is an expression:** there are no statements. Every form produces a value — or *no value* (see 2.5).
 - **Dynamic typing:** values are one of `f32`, `string`, `bool`, or `lambda`.
-- **Lexical scoping:** lambdas capture the environment where they are defined.
-- **Expression-oriented:** the last expression in a sequence determines the returned value.
+- **Lexical scoping:** lambdas capture the environment where they are defined (with a current limitation for escaping closures — see 14).
+- **Short-circuiting conditionals:** `if`, `and`, and `or` evaluate only the forms they need.
 
 ## 2. Data Types
 
@@ -20,11 +21,11 @@ Key characteristics:
 | `number` | 32-bit floating point (`f32`) | `42`, `3.14`, `-7`     |
 | `string` | Double-quoted text            | `"hello"`              |
 | `bool`   | Boolean value                 | `true`, `false`        |
-| `lambda` | Anonymous function value      | `(lambda (x) (+ x 1))` |
+| `lambda` | Function value                | `(lambda (x) (+ x 1))` |
 
 ### 2.1 Numbers
 
-Numbers are parsed as `f32`. Integer-looking literals are still stored as floating-point values. An explicit leading `+` or `-` is also accepted as part of a numeric literal.
+Numbers are parsed as `f32`. Integer-looking literals are still stored as floating-point values. An explicit leading `+` or `-` is accepted as part of a numeric literal.
 
 ```lisp
 10      ; => 10.0
@@ -46,19 +47,20 @@ Strings are delimited by double quotes (`"`). They may contain spaces and span a
 
 The keywords `true` and `false` evaluate to boolean values.
 
-```lisp
-true
-false
-```
-
 ### 2.4 Lambda Values
 
 A lambda value is a first-class function object that carries:
 
-- its parameter list,
-- its body (a list of statements),
-- its arity,
+- its name (`lambda_func` for anonymous lambdas, the registered name for built-ins),
+- its parameter list and arity,
+- its body (a list of expressions),
 - a closure (the environment where it was created).
+
+Lambdas can be bound to names with `def`, called immediately, passed as arguments... no — arguments must be literal values, so lambdas are passed by name. They can also be **selected by conditionals and called directly** (see 6.5).
+
+### 2.5 No Value
+
+Some forms produce *no value* instead of a value: `def`, `print`, an `if` whose condition is falsy and has no alternative, an empty `begin`/`and`/`or`, and a lambda body with more than one form. The REPL prints nothing for these, and `and`/`or`/`if` treat "no value" as falsy.
 
 ## 3. Lexical Structure
 
@@ -74,38 +76,40 @@ The scanner produces the following token kinds:
 | `STRING`      | `"..."`                                       |
 | `TRUE`        | `true`                                        |
 | `FALSE`       | `false`                                       |
-| `IDENTIFIER`  | identifier token                              |
-| `DEF`         | `def`                                         |
-| `PRINT`       | `print`                                       |
+| `DEF`         | `def`, `define`                               |
+| `PRINT`       | `print`, `display`                            |
 | `LAMBDA`      | `lambda`                                      |
+| `IF`          | `if`                                          |
+| `BEGIN`       | `begin`                                       |
+| `AND`         | `and`                                         |
+| `OR`          | `or`                                          |
+| `IDENTIFIER`  | identifier token                              |
 | `EOF`         | end of input                                  |
 
-The operator symbols `+`, `-`, `*`, and `/` are tokenized as `IDENTIFIER` tokens, not as separate operator token kinds.
+The operator symbols `+`, `-`, `*`, `/`, `=`, `>`, `>=`, `<`, and `<=` are tokenized as `IDENTIFIER` tokens, not as separate operator token kinds. They resolve to built-in functions through the environment.
 
 ### 3.2 Identifiers
 
-Identifiers are sequences of characters that are not control characters, whitespace, or delimiters. They may contain letters, digits, and many punctuation characters such as `?`, `_`, `-`, `!`, `*`, `=`, `/`, `+`, and `.`. The characters `(`, `)`, `"`, `;`, space, tab, carriage return, and newline are **not** allowed inside an identifier.
+Identifiers are sequences of characters that are not control characters, whitespace, or delimiters. They may contain letters, digits, and many punctuation characters such as `?`, `_`, `-`, `!`, `*`, `=`, `/`, `+`, `.`, `<`, and `>`. The characters `(`, `)`, `"`, `;`, space, tab, carriage return, and newline are **not** allowed inside an identifier.
 
-Valid identifiers: `x`, `foo`, `x1`, `foo-bar`, `_bar`, `even?`, `set!`, `*global*`
+Valid identifiers: `x`, `foo`, `x1`, `foo-bar`, `_bar`, `even?`, `set!`, `*global*`, `beginner`, `android`, `orders`
 Invalid identifiers: `(foo)`, `"bar"`, `foo;bar`
+
+Keyword lookalikes with extra characters stay identifiers: `def1`, `iffy`, `begins`, `displays`, `defined`.
 
 ### 3.3 Keywords
 
 The following names are reserved and cannot be used as variable names:
 
-- `def`
-- `print`
-- `lambda`
-- `true`
-- `false`
+`def`, `define`, `print`, `display`, `lambda`, `true`, `false`, `if`, `begin`, `and`, `or`
 
 ### 3.4 Whitespace
 
-Space (` `), tab (`\t`), and carriage return (`\r`) are treated as whitespace and skipped. Newlines (`\n`) increment the line counter for error reporting and also separate tokens.
+Space (` `), tab (`\t`), and carriage return (`\r`) are treated as whitespace and skipped. Newlines (`\n`) increment the line counter for error reporting and also separate forms.
 
 ### 3.5 Comments
 
-A semicolon (`;`) begins a comment that runs to the end of the current line. Comments are skipped by the scanner.
+A semicolon (`;`) begins a comment that runs to the end of the current line.
 
 ```lisp
 (def x 10) ; this is a comment
@@ -114,254 +118,274 @@ A semicolon (`;`) begins a comment that runs to the end of the current line. Com
 
 ## 4. Program Structure
 
-A program is a sequence of **statements**. Statements are evaluated in order. If a program contains more than one statement, the values of all but the last statement are discarded, and the value of the last statement is returned as the program's result.
+A program is a sequence of **expressions**, evaluated in order. A program made of a single expression yields that expression's value; in a multi-expression program the values of all but the last expression are discarded. To sequence expressions and keep a value, wrap them in `begin`:
 
 ```lisp
-(def x 10)
-(def y 20)
-(+ x y)     ; => 30.0
+(begin (def x 10) (def y 20) (+ x y))   ; => 30.0
 ```
 
-## 5. Statements
+Programs run from a file (`lisp_odin file.scm` prints the final value) or interactively in the REPL (`lisp_odin` with no arguments; the REPL requires an interactive terminal).
 
-### 5.1 Expression Statement
+## 5. Core Forms
 
-Any expression standing alone is an expression statement.
-
-```lisp
-(+ 1 2)
-"hello"
-```
-
-### 5.2 `def` — Variable Definition
+### 5.1 `def` / `define` — Variable Definition
 
 ```lisp
 (def name expr)
+(define name expr)
 ```
 
-Binds the identifier `name` to the value of `expr` in the current environment. The right-hand side is evaluated before binding.
+Evaluates `expr` and binds the identifier `name` to the result in the current environment. Produces no value. `define` is an alias for `def`.
 
 ```lisp
 (def x 10)
 (def y (+ x 5))
+(def f (lambda (a b) (+ a b)))
 ```
 
-### 5.3 `print` — Output
+### 5.2 `print` / `display` — Output
 
 ```lisp
 (print expr ...)
+(display expr ...)
 ```
 
-Evaluates each argument in order, concatenates their string representations, and prints the result to standard output. No extra spaces or newline are appended automatically; use string literals or the `newline` built-in to add line breaks.
+Evaluates each argument in order, concatenates their string representations, and prints the result to standard output. No extra spaces or newline are appended automatically; use the `newline` built-in to add line breaks. Produces no value. `display` is an alias for `print`.
 
 ```lisp
-(print "hello")
-(print "sum is" (+ 1 2) (newline))
+(print "sum is" (+ 1 2) (newline))   ; prints: sum is3.00000000
 ```
 
-## 6. Expressions
-
-### 6.1 Literals
-
-A literal expression evaluates to its literal value.
-
-```lisp
-42
-"hello"
-true
-```
-
-### 6.2 Variables
-
-An identifier evaluates to the value bound to that name in the current or enclosing environment. If the name is not bound, evaluation returns a runtime error.
-
-```lisp
-x
-my-function
-```
-
-### 6.3 Function Calls
-
-```lisp
-(function arg1 arg2 ...)
-```
-
-The first element after the opening parenthesis is an identifier that must resolve to a `lambda` value. The remaining elements are evaluated as arguments and passed to the function.
-
-Arguments are evaluated left-to-right in the current environment before the function body runs.
-
-```lisp
-(+ 1 2 3)
-(my-func a b)
-```
-
-### 6.4 Anonymous Function Calls
-
-A lambda expression can be called immediately by placing it in function position:
-
-```lisp
-((lambda (a b) (+ a b)) 1 2)   ; => 3.0
-```
-
-## 7. Special Forms
-
-### 7.1 `lambda` — Anonymous Functions
+### 5.3 `lambda` — Function Values
 
 ```lisp
 (lambda (param1 param2 ...) body ...)
 ```
 
-Creates a first-class function value. Parameters are identifiers listed inside an inner parameter list. The body is a sequence of statements.
-
-When the lambda is called, a new environment is created with the closure as its parent, each parameter is bound to the corresponding argument, and the body statements are evaluated. The value of the last body statement is returned.
+Creates a first-class function value. Parameters are identifiers listed inside an inner parameter list; at most 100 parameters are allowed. When the lambda is called, a new environment is created with the closure as its parent, each parameter is bound to the corresponding argument, and the body is evaluated. Note: a **single-form body** returns its value; multi-form bodies currently yield no value (wrap the body in `begin` to return a value from a sequence).
 
 ```lisp
 (lambda (x) (+ x 1))
-(lambda (a b) (print a) (+ a b))
+(lambda (a b) (begin (print a) (+ a b)))
 ```
 
-Parameter list size is limited to 100 parameters.
+## 6. Control Flow
 
-## 8. Built-in Functions
+### 6.1 Truthiness
 
-Built-in functions are variadic (`arity = -1`) and are stored in the global environment under their operator symbols or names.
+The language uses **C-style truthiness** (a deliberate deviation from Scheme, where only `#f` is falsy):
 
-### 8.1 `+` — Addition
+| Value                     | Truthy? |
+| ------------------------- | ------- |
+| `false`                   | no      |
+| `0` / `0.0`               | no      |
+| `""` (empty string)       | no      |
+| no value (e.g. a `def`)   | no      |
+| everything else           | yes     |
+
+### 6.2 `if` — Conditional
 
 ```lisp
-(+ number ...)
+(if condition consequent alternative?)
 ```
 
-Returns the sum of all arguments. With zero arguments, returns `0.0`. All arguments must be numbers.
+Evaluates `condition`; if truthy, evaluates and returns `consequent`; otherwise evaluates and returns `alternative` (if present). **Only the taken branch is evaluated** — errors in the untaken branch never fire. Without an alternative and a falsy condition, `if` produces no value.
 
 ```lisp
-(+)             ; => 0.0
-(+ 1 2)         ; => 3.0
-(+ 1 2 3 4)     ; => 10.0
+(if (> 3 2) "yes" "no")        ; => "yes"
+(if true 1 (/ 1 0))            ; => 1  (division never evaluated)
+(if false 1)                   ; => no value
 ```
 
-### 8.2 `-` — Subtraction
+### 6.3 `begin` — Sequencing
 
 ```lisp
-(- number ...)
+(begin expr ...)
 ```
 
-Subtracts the remaining arguments from the first. With one argument, returns its negation. All arguments must be numbers.
-
-### 8.3 `*` — Multiplication
+Evaluates every expression from left to right and returns the value of the last one. An empty `begin` produces no value.
 
 ```lisp
-(* number ...)
+(begin (def n -4) (if (< n 0) (- 0 n) n))   ; => 4
 ```
 
-Returns the product of all arguments. With zero arguments, returns `1.0`. All arguments must be numbers.
+### 6.4 `and` / `or` — Short-Circuit Logic
 
 ```lisp
-(*)             ; => 1.0
-(* 2 3)         ; => 6.0
-(* 2 3 4)       ; => 24.0
+(and expr ...)
+(or expr ...)
 ```
 
-### 8.4 `/` — Division
+`and` evaluates left to right and stops at the first **falsy** value, returning it; if all values are truthy it returns the last one. `or` stops at the first **truthy** value, returning it; if all are falsy it returns the last one. Both return the **value** of the last expression evaluated — not a boolean — and skip everything after the stopping point. Empty `and`/`or` produce no value.
 
 ```lisp
-(/ number ...)
+(and (>= -4 -10) (<= -4 10) (* -4 -4))   ; => 16.0
+(and (> -4 0) (sqrt -4))                 ; => false  (sqrt never called)
+(or (< -4 0) (sqrt -4))                  ; => true   (sqrt never called)
 ```
 
-Divides the first argument by the remaining arguments in order. With one argument, returns its reciprocal (`1 / x`). All arguments must be numbers. Division by zero produces a runtime error.
+### 6.5 Calls with Computed Operators
+
+The operator position of a call is a full expression. Any expression evaluating to a lambda can be called directly:
 
 ```lisp
-(/ 10 2)        ; => 5.0
-(/ 1 4)         ; => 0.25
-(/ 2)           ; => 0.5
+((lambda (a b) (+ a b)) 1 2)                        ; => 3.0
+((if true (lambda (x) (* x 2)) (lambda (x) 0)) 21)  ; => 42.0
 ```
 
-### 8.5 `newline` — Newline String
+## 7. Built-in Functions
+
+Built-ins live in the global environment. Variadic built-ins accept any number of arguments; `sqrt` is the first fixed-arity built-in (exactly 1).
+
+### 7.1 Arithmetic
+
+| Form         | Behavior                                               |
+| ------------ | ------------------------------------------------------ |
+| `(+ n ...)`  | sum; `(+)` => `0.0`                                    |
+| `(- n ...)`  | left fold of subtraction; one arg => negation          |
+| `(* n ...)`  | product; `(*)` => `1.0`                               |
+| `(/ n ...)`  | left fold of division; one arg => reciprocal `1/x`     |
+
+All arithmetic arguments must be numbers; anything else reports
+`Argument 'x': Expected type NUMBER.` Division by zero reports a dedicated error.
+
+```lisp
+(+ 10 (* 2 3))   ; => 16.0
+(/ 10 2)         ; => 5.0
+(/ 2)            ; => 0.5
+```
+
+### 7.2 Comparisons — Monotonic Chains
+
+The five comparison built-ins follow Scheme chain semantics: every argument is compared against the **next** one, and all pairs must hold.
+
+| Form             | Chain                       | Mixed types |
+| ---------------- | --------------------------- | ----------- |
+| `(= a b ...)`    | all values equal            | numbers **or** strings **or** bools (first argument's type decides; a mismatch reports `Expected type STRING.` / `BOOLEAN.` / `NUMBER.`) |
+| `(> a b ...)`    | strictly decreasing         | numbers only |
+| `(>= a b ...)`   | non-increasing              | numbers only |
+| `(< a b ...)`    | strictly increasing         | numbers only |
+| `(<= a b ...)`   | non-decreasing              | numbers only |
+
+Empty comparisons are true; a single argument is true (after its type is checked for the numeric operators).
+
+```lisp
+(= 1 1)          ; => true
+(= "a" "a")      ; => true
+(> 4 3 2 1)      ; => true  (strictly decreasing chain)
+(> 1 0 0 4)      ; => false (0 > 0 fails)
+(>= 3 1 1)       ; => true  (equal values allowed)
+(< 1 2 2 3)      ; => false (strict)
+(<= 1 2 2 3)     ; => true
+```
+
+IEEE notes: `-0.0` equals `0.0`; `inf` chains hold under `<=`/`>=` but break strict `<`/`>`; NaN fails every comparison, including `=`.
+
+### 7.3 `sqrt` — Square Root
+
+```lisp
+(sqrt x)
+```
+
+Fixed arity 1, numbers only. Returns the square root of `x`. A negative argument reports a `.MathError`:
+
+```lisp
+(sqrt 9)     ; => 3.0
+(sqrt 2)     ; => 1.4142135
+(sqrt -1)    ; MathError: Can't calculate the square root of a negative number - -1
+```
+
+### 7.4 `newline` — Newline String
 
 ```lisp
 (newline)
 ```
 
-Returns the string `"\n"`. It is typically used with `print` to produce line breaks.
+Returns the string `"\n"`; used with `print` for line breaks.
+
+### 7.5 `pi` — Constant
+
+The global environment binds `pi` to `3.1415927` (`f32(math.PI)`).
 
 ```lisp
-(print "hello" (newline))
+(begin (def r 10) (* pi (* r r)))   ; => 314.15927
 ```
 
-## 9. Evaluation Rules
+## 8. Evaluation Rules
 
-1. **Statements** are evaluated in order.
-2. **Expression statements** evaluate the expression and return its value.
-3. **`def`** evaluates the right-hand side, then binds it in the current environment.
-4. **`print`** evaluates each argument and prints the result.
-5. **Function calls** evaluate the function expression, evaluate each argument, then invoke the function with the arguments.
-6. **Lambdas** capture the current environment as their closure.
-7. **Variable lookup** searches the current environment, then each enclosing environment in order.
+1. Every form is an expression; forms are evaluated in order.
+2. **`def`** evaluates the right-hand side, binds it, produces no value.
+3. **`print`** evaluates each argument, prints, produces no value.
+4. **`if`/`and`/`or`** evaluate lazily and return the last evaluated value (or no value).
+5. **`begin`** evaluates everything, returns the last value.
+6. **Calls** evaluate the operator expression first, then each argument left-to-right, then invoke the function.
+7. **Lambdas** capture the current environment as their closure.
+8. **Variable lookup** searches the current environment, then each enclosing environment in order.
 
-## 10. Scoping
+## 9. Scoping
 
 The language uses lexical scoping with closures.
 
-- The global environment is created at startup and contains the built-in math functions and `newline`.
+- The global environment is created at startup via the shared registration proc and contains the arithmetic, comparison, `sqrt`, and `newline` built-ins, plus the `pi` constant.
 - `def` binds names in the current environment.
 - Lambda bodies run in a new environment whose parent is the lambda's closure.
 - A lambda can access variables from its enclosing scopes through its closure.
 
-```lisp
-(def make-adder
-  (lambda (n)
-    (lambda (x) (+ x n))))
+> **Known bug — escaping closures:** a lambda *returned from* a call currently captures a destroyed stack environment, so the classic `(def make-adder (lambda (n) (lambda (x) (+ x n))))` pattern crashes when the returned function is invoked. See 14.
 
-(def add5 (make-adder 5))
-(add5 10)   ; => 15.0
-```
+## 10. Error Handling
 
-## 11. Error Handling
+The interpreter uses a structured error type (`core.Error`) covering scanner, parser, and runtime errors. There is no exception-catching mechanism. Representative messages:
 
-The interpreter uses a structured error type (`core.Error`) for scanner, parser, and runtime errors. These errors are returned through the evaluation pipeline and reported to the user. There is no exception-catching mechanism.
+| Situation                              | Kind                          | Message example |
+| -------------------------------------- | ----------------------------- | --------------- |
+| Unbound name                           | `Variable_Not_Found`          | `Variable foo not found` |
+| Non-number argument to a numeric fn   | `Expected_LiteralValue_Type`  | `Argument 'hello': Expected type NUMBER.` |
+| Mixed-type comparison                  | `Expected_LiteralValue_Type`   | `Argument '1': Expected type STRING.` |
+| Division by zero                       | `Division_By_Zero`             | `Division by Zero Error` |
+| Wrong argument count                   | `Lambda_Arity_Mismatch`        | `Expected 1 argument(s) but got 2.` (token carries the function's name) |
+| Negative `sqrt`                        | `MathError`                   | `Can't calculate the square root of a negative number - -1` |
+| Calling a non-lambda value             | `Runtime_Or_Lambda_Expected`   | `Unknown Lambda declaration` |
+| No-value call operator                 | `Runtime_Or_Lambda_Expected`   | `Expected a variable or lambda definition as the call operator` |
+| Parse failures                         | (parser kinds)                 | `Unexpected Expression`, `Expected ')' ...`, `Lambda body expected.` |
 
-Errors reported through this mechanism include:
+Some internal invariants are still enforced with assertions, which panic if violated (see 14).
 
-- Unterminated string literals
-- Failed number literal parsing
-- Unexpected tokens during parsing
-- Use of an unbound variable
-- Calling a non-function value
-- Wrong number of arguments for a lambda
-- Passing a non-number argument to a math function
-- Division by zero
-- Type mismatches during evaluation
-
-Some internal invariants are still enforced with assertions, which panic if violated.
-
-## 12. EBNF Grammar
+## 11. EBNF Grammar
 
 ```ebnf
-program        ::= (statement | comment)* EOF
+program        ::= expression* EOF
 
 comment        ::= ";" ANY* (NEWLINE | EOF)
 
-statement      ::= def-statement
-                |  print-statement
-                |  expression-statement
-
-def-statement  ::= "(" "def" IDENTIFIER expression ")"
-
-print-statement::= "(" "print" expression* ")"
-
-expression-statement ::= expression
-
 expression     ::= literal
                 |  IDENTIFIER
+                |  def-expression
+                |  print-expression
                 |  lambda-expression
-                |  function-call
+                |  if-expression
+                |  begin-expression
+                |  and-expression
+                |  or-expression
+                |  call-expression
 
 literal        ::= NUMBER | STRING | "true" | "false"
 
-lambda-expression ::= "(" "lambda" "(" IDENTIFIER* ")" statement* ")"
+def-expression  ::= "(" ("def" | "define") IDENTIFIER expression ")"
 
-function-call  ::= "(" IDENTIFIER expression* ")"
-                |  "(" lambda-expression expression* ")"
+print-expression ::= "(" ("print" | "display") expression* ")"
+
+lambda-expression ::= "(" "lambda" "(" IDENTIFIER* ")" expression* ")"
+
+if-expression  ::= "(" "if" expression expression expression? ")"
+
+begin-expression ::= "(" "begin" expression* ")"
+
+and-expression ::= "(" "and" expression* ")"
+
+or-expression  ::= "(" "or" expression* ")"
+
+call-expression ::= "(" expression expression* ")"
 
 IDENTIFIER     ::= (ALPHA | SYMBOL) (ALPHA | DIGIT | SYMBOL)*
 NUMBER         ::= ("+" | "-")? DIGIT+ ("." DIGIT+)?
@@ -369,48 +393,70 @@ STRING         ::= "\"" ANY* "\""
 ALPHA          ::= "a".."z" | "A".."Z"
 DIGIT          ::= "0".."9"
 NEWLINE        ::= "\n"
-SYMBOL         ::= "?" | "_" | "-" | "!" | "*" | "=" | "/" | "+" | "." | graphic-character
+SYMBOL         ::= "?" | "_" | "-" | "!" | "*" | "=" | "/" | "+" | "." | "<" | ">" | graphic-character
 ```
 
-## 13. Examples
+## 12. Examples
 
-### Arithmetic
+### Arithmetic and variables
 
 ```lisp
-(+ 10 10)                 ; => 20.0
-(+ 10 (* 2 3))            ; => 16.0
+(+ 10 (* 2 3))                      ; => 16.0
+(begin (def x 10) (def y 20) (+ x y))   ; => 30.0
 ```
 
-### Variables
+### Conditionals
 
 ```lisp
-(def r 10)
-(def pi 3.14)
-(print (* pi (* r r)) (newline))    ; prints area
+(if (> 5 3) "big" "small")          ; => "big"
+(if (and (> 1 0) (< 1 5)) "in" "out")   ; => "in"
 ```
 
-### Lambdas
+### The sign-of pattern
 
 ```lisp
-(def add
-  (lambda (a b) (+ a b)))
-
-(print (add 1 2))         ; => 3.0
+(begin (def n -4)
+  (if (< n 0) (- 0 n) n))            ; => 4
 ```
 
-### Anonymous lambda call
+### Functions
 
 ```lisp
-((lambda (a b) (+ a b)) 1 2)   ; => 3.0
+(begin (def add (lambda (a b) (+ a b)))
+  (add 1 2))                          ; => 3.0
+((lambda (a b) (+ a b)) 1 2)          ; => 3.0
 ```
+
+### Geometry with the `pi` constant
+
+```lisp
+(begin (def r 10) (* pi (* r r)))    ; => 314.15927
+```
+
+## 13. REPL and File Mode
+
+- `lisp_odin` with no arguments starts an interactive REPL (requires an interactive terminal).
+- `lisp_odin file.scm` evaluates the file and prints the final value; forms producing no value print nothing.
 
 ## 14. Known Limitations and Bugs
 
-1. **No comparison operators:** `==`, `<`, `>`, `<=`, `>=` are not implemented.
-   - [ ] **TASK:** Add comparison operators to the scanner, parser, global environment, and built-in functions.
-2. **No conditionals:** `if`, `cond`, and logical operators are not implemented.
-   - [ ] **TASK:** Add `if`/`cond` special forms and logical operators (`and`, `or`, `not`).
-3. **No lists or pairs:** There are no cons cells, lists, or sequence data structures beyond function argument lists.
-   - Known limitation. We won't touch lists for now.
-4. **No I/O beyond `print` and the REPL:** There are no file, network, or input operations.
-   - Known limitation. We won't touch I/O for now.
+1. **Escaping closures crash (bug, issue #23):** a lambda returned from a call captures a destroyed stack environment. Reproduction:
+   ```lisp
+   (begin (def make-adder (lambda (n) (lambda (x) (+ x n))))
+     (def add5 (make-adder 5))
+     (add5 10))   ;; runtime assertion: e.variables != nil
+   ```
+   Fixing this requires heap-allocated (or otherwise escaping) call environments.
+2. **`def` of a no-value form crashes (bug, issue #24):** using a form that produces no value as a `def` right-hand side panics instead of erroring.
+   ```lisp
+   (def x (if false 1))   ;; type assertion panic
+   (def x (begin))        ;; same crash
+   ```
+3. **Parameter limit is off by one (bug, issue #25):** a lambda with exactly 101 parameters parses without error; the limit only fires from 102. The check runs before appending, so `len == 101` is never seen. Regression guard: `lambda_with_101_params_reports_max_params_error` (currently failing on purpose).
+4. **`def` names are not validated (bug, issue #26):** `(def if 1)`, `(def 5 1)`, and `(def "x" 1)` all parse, silently binding names that can never be looked up.
+5. **No lists or pairs:** there are no cons cells, lists, or sequence data structures beyond function argument lists. Known limitation; out of scope for now.
+6. **No I/O beyond `print` and the REPL:** no file, network, or input operations. Known limitation; out of scope for now.
+7. **No `not` / `cond`:** `if`, `and`, and `or` cover the current needs; `not` can be expressed as `(if x false true)`.
+8. **Multi-form lambda bodies yield no value:** wrap the body in `begin` to return a value from a sequence (see 5.3).
+9. **NaN/Infinity are not literals:** `nan`/`inf` are unbound identifiers; the IEEE edge cases only matter for values produced by future arithmetic.
+10. Some internal invariants use assertions that abort the process instead of reporting errors (e.g. an internal call of a built-in handler with a wrong argument count).

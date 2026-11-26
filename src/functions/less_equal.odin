@@ -1,12 +1,14 @@
-package comparison_functions
+package runtime_functions
 
-import core "../../core"
+import core "../core"
 
-create_greater_than_function :: proc() -> LambdaFunction {
-	return {arity = -1, call = greater_than, closure = nil}
+LESS_EQUAL_FUNCTION_NAME :: "<="
+
+create_less_than_equal_function :: proc() -> LambdaFunction {
+	return {name = LESS_EQUAL_FUNCTION_NAME, arity = -1, call = less_than_equal, closure = nil}
 }
 
-greater_than :: proc(
+less_than_equal :: proc(
 	_: ^LambdaFunction,
 	values: []LiteralValue,
 	_: core.InterpreterCaller,
@@ -23,7 +25,7 @@ greater_than :: proc(
 	for val in values[1:] {
 		target = core.parse_literalvalue(val, f32) or_return
 
-		accum = accum && (comp > target)
+		accum = accum && (comp <= target)
 		comp = target
 	}
 

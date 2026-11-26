@@ -15,6 +15,10 @@ TokenType :: enum {
 	DEF,
 	PRINT,
 	LAMBDA,
+	IF,
+	BEGIN,
+	AND,
+	OR,
 	EOF,
 }
 

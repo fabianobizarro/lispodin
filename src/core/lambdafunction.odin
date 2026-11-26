@@ -4,8 +4,10 @@ import env "../environment"
 import "core:fmt"
 import "core:strings"
 
+ANONYMOUS_LAMBDA_NAME :: "lambda_func"
+
 InterpreterCaller :: proc(
-	_: []Statement,
+	_: []Expression,
 	e: ^RuntimeEnvironment,
 ) -> (
 	result: Maybe(Atom),
@@ -24,6 +26,7 @@ LambdaCallHandler :: proc(
 )
 
 LambdaFunction :: struct {
+	name:       string,
 	arity:      i8,
 	expression: LambdaExpression,
 	call:       LambdaCallHandler,
@@ -36,6 +39,7 @@ create_lambda_function :: proc(
 ) -> LambdaFunction {
 
 	return LambdaFunction {
+		name = ANONYMOUS_LAMBDA_NAME,
 		arity = i8(len(exp.params)),
 		expression = exp,
 		call = call,

@@ -36,7 +36,6 @@ CliOptions :: struct {
 	debug: bool `args:"pos=1" usage: "Enable debuging logs"`,
 }
 
-
 my_custom_type_setter :: proc(
 	data: rawptr,
 	data_type: typeid,

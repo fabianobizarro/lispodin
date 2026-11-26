@@ -15,6 +15,7 @@ Parser_Error_Kind :: enum u32 {
 	Unexpected_Token,
 	Max_Parameters_Length,
 	Unexpected_Expression,
+	Unexpected_Block_Expression,
 	Lambda_Body_Expected,
 }
 
@@ -34,6 +35,7 @@ Runtime_Error_Kind :: enum u32 {
 	Expected_LiteralValue_Type,
 	Division_By_Zero,
 	LiteralValue_Parsing_Error,
+	MathError,
 }
 
 Runtime_Error :: struct {

@@ -1,10 +1,10 @@
-package math_functions_test
+package runtime_functions_test
 
-import core "../../../src/core"
-import math "../../../src/functions/math"
+import core "../../src/core"
+import runtime "../../src/functions"
 import "core:testing"
 
-multiplication :: math.multiplication
+multiplication :: runtime.multiplication
 
 @(test)
 multiplication_test_1 :: proc(t: ^testing.T) {

@@ -21,12 +21,12 @@ stray_right_paren_reports_one_error :: proc(t: ^testing.T) {
 	tokens, scan_errors = scanner.tokenize(program)
 	testing.expect_value(t, len(scan_errors), 0)
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	// assert
-	testing.expect_value(t, len(statements), 0)
+	testing.expect_value(t, len(expressions), 0)
 	testing.expect_value(t, len(parse_errors), 1)
 
 	parser_err, ok := parse_errors[0].(core.Parser_Error)
@@ -49,12 +49,12 @@ unterminated_call_reports_error :: proc(t: ^testing.T) {
 	tokens, scan_errors = scanner.tokenize(program)
 	testing.expect_value(t, len(scan_errors), 0)
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	// assert
-	testing.expect_value(t, len(statements), 0)
+	testing.expect_value(t, len(expressions), 0)
 	testing.expect_value(t, len(parse_errors), 1)
 
 	parser_err, ok := parse_errors[0].(core.Parser_Error)
@@ -79,8 +79,8 @@ lambda_without_body_reports_error :: proc(t: ^testing.T) {
 	tokens, scan_errors = scanner.tokenize(program)
 	testing.expect_value(t, len(scan_errors), 0)
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	// assert
@@ -106,12 +106,12 @@ define_missing_value_reports_error :: proc(t: ^testing.T) {
 	tokens, scan_errors = scanner.tokenize(program)
 	testing.expect_value(t, len(scan_errors), 0)
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	// assert
-	testing.expect_value(t, len(statements), 0)
+	testing.expect_value(t, len(expressions), 0)
 	testing.expect_value(t, len(parse_errors), 1)
 
 	parser_err, ok := parse_errors[0].(core.Parser_Error)
@@ -121,10 +121,10 @@ define_missing_value_reports_error :: proc(t: ^testing.T) {
 }
 
 // After an error the parser recovers and still parses the next valid
-// statement.
+// expression.
 
 @(test)
-recovery_parses_statement_after_error :: proc(t: ^testing.T) {
+recovery_parses_expression_after_error :: proc(t: ^testing.T) {
 	// arrange
 	scan_errors: []core.Error
 	program := ")\n(+ 1 2)"
@@ -135,23 +135,23 @@ recovery_parses_statement_after_error :: proc(t: ^testing.T) {
 	tokens, scan_errors = scanner.tokenize(program)
 	testing.expect_value(t, len(scan_errors), 0)
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	// assert
 	testing.expect_value(t, len(parse_errors), 1)
-	testing.expect_value(t, len(statements), 1)
+	testing.expect_value(t, len(expressions), 1)
 
 	parser_err, ok := parse_errors[0].(core.Parser_Error)
 	testing.expect(t, ok)
 	testing.expect_value(t, parser_err.kind, .Unexpected_Expression)
 
-	expression_statement, is_expression := statements[0].(core.ExpressionStatement)
-	testing.expect(t, is_expression)
-
-	call, is_call := expression_statement.expression.(core.LambdaCallExpression)
+	call, is_call := expressions[0].(core.LambdaCallExpression)
 	testing.expect(t, is_call)
-	testing.expect_value(t, call.identifier.lexeme, "+")
+
+	operator, is_var := call.operator^.(core.VariableExpression)
+	testing.expect(t, is_var)
+	testing.expect_value(t, operator.name, "+")
 	testing.expect_value(t, len(call.args), 2)
 }

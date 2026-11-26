@@ -342,7 +342,6 @@ identifier_keywords_with_extra_characters :: proc(t: ^testing.T) {
 	// arrange
 	scan_errors: []core.Error
 	names := [?]string {
-		"define",
 		"printer",
 		"Def",
 		"TRUE",
@@ -358,6 +357,12 @@ identifier_keywords_with_extra_characters :: proc(t: ^testing.T) {
 		"true-value",
 		"false?",
 		"false_flag",
+		"defined",
+		"defines",
+		"beginner",
+		"android",
+		"orders",
+		"displays",
 	}
 	results: [len(names)][]core.Token
 	defer for result in results {
@@ -393,6 +398,12 @@ identifier_keywords_and_numbers_stay_exact :: proc(t: ^testing.T) {
 		check_literal: bool,
 	} {
 		{"def", .DEF, "def", nil, false},
+		{"define", .DEF, "define", nil, false},
+		{"if", .IF, "if", nil, false},
+		{"begin", .BEGIN, "begin", nil, false},
+		{"and", .AND, "and", nil, false},
+		{"or", .OR, "or", nil, false},
+		{"display", .PRINT, "display", nil, false},
 		{"print", .PRINT, "print", nil, false},
 		{"lambda", .LAMBDA, "lambda", nil, false},
 		{"true", .TRUE, "true", nil, false},
