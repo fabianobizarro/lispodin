@@ -17,6 +17,7 @@ TokenType :: enum {
 	LAMBDA,
 	IF,
 	BEGIN,
+	AND,
 	EOF,
 }
 

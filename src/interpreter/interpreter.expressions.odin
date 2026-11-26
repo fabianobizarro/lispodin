@@ -18,6 +18,13 @@ evaluate_expression :: proc(
 ) {
 
 	switch kind in expression {
+	case:
+		result = nil
+		err = Runtime_Error {
+			kind    = .Unexpected_Expression,
+			message = "Unexpected Expression",
+		}
+		return
 	case core.LiteralExpression:
 		return evaluate_literal(kind)
 	case core.VariableExpression:
@@ -34,14 +41,25 @@ evaluate_expression :: proc(
 		return evaluate_define(kind, e)
 	case core.BeginExpression:
 		return evaluate_begin_expression(kind, e)
-	case:
-		result = nil
-		err = Runtime_Error {
-			kind    = .Unexpected_Expression,
-			message = "Unexpected Expression",
-		}
-		return
+	case core.AndExpression:
+		return evaluate_and_expression(kind, e)
 	}
+}
+
+evaluate_and_expression :: proc(
+	exp: core.AndExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+
+	for expression in exp.expressions {
+		result = evaluate_expression(expression, e) or_return
+		if falsy(result) do return
+	}
+
+	return
 }
 
 evaluate_begin_expression :: proc(

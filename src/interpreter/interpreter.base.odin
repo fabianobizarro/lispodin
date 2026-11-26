@@ -39,3 +39,24 @@ truthy :: proc(val: Result) -> bool {
 
 	return false
 }
+
+falsy :: proc(val: Result) -> bool {
+
+	if _, ok := val.?; !ok do return true
+
+	switch lit in val.? {
+	case core.LiteralValue:
+		switch t in lit {
+		case f32:
+			return t == 0
+		case string:
+			return len(t) == 0
+		case bool:
+			return t == false
+		}
+	case core.LambdaFunction:
+		return true
+	}
+
+	return false
+}

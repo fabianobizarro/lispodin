@@ -9,6 +9,7 @@ Expression :: union {
 	PrintExpression,
 	DefineExpression,
 	BeginExpression,
+	AndExpression,
 }
 
 // 1 2 3 4
@@ -65,5 +66,9 @@ DefineExpression :: struct {
 
 
 BeginExpression :: struct {
+	expressions: []Expression,
+}
+
+AndExpression :: struct {
 	expressions: []Expression,
 }
