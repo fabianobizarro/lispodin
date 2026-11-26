@@ -607,3 +607,39 @@ or_as_if_condition :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	testing.expect_value(t, value, "no")
 }
+
+// and/or return values, so they compose inside other expressions.
+
+@(test)
+and_value_in_arithmetic :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(+ 1 (and 1 2))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 3)
+}
+
+@(test)
+or_value_in_arithmetic :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(+ 1 (or false 5))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 6)
+}

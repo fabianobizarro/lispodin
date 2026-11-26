@@ -440,16 +440,23 @@ SYMBOL         ::= "?" | "_" | "-" | "!" | "*" | "=" | "/" | "+" | "." | "<" | "
 
 ## 14. Known Limitations and Bugs
 
-1. **Escaping closures crash (bug):** a lambda returned from a call captures a destroyed stack environment. Reproduction:
+1. **Escaping closures crash (bug, issue #23):** a lambda returned from a call captures a destroyed stack environment. Reproduction:
    ```lisp
    (begin (def make-adder (lambda (n) (lambda (x) (+ x n))))
      (def add5 (make-adder 5))
      (add5 10))   ;; runtime assertion: e.variables != nil
    ```
    Fixing this requires heap-allocated (or otherwise escaping) call environments.
-2. **No lists or pairs:** there are no cons cells, lists, or sequence data structures beyond function argument lists. Known limitation; out of scope for now.
-3. **No I/O beyond `print` and the REPL:** no file, network, or input operations. Known limitation; out of scope for now.
-4. **No `not` / `cond`:** `if`, `and`, and `or` cover the current needs; `not` can be expressed as `(if x false true)`.
-5. **Multi-form lambda bodies yield no value:** wrap the body in `begin` to return a value from a sequence (see 5.3).
-6. **NaN/Infinity are not literals:** `nan`/`inf` are unbound identifiers; the IEEE edge cases only matter for values produced by future arithmetic.
-7. Some internal invariants use assertions that abort the process instead of reporting errors (e.g. an internal call of a built-in handler with a wrong argument count).
+2. **`def` of a no-value form crashes (bug, issue #24):** using a form that produces no value as a `def` right-hand side panics instead of erroring.
+   ```lisp
+   (def x (if false 1))   ;; type assertion panic
+   (def x (begin))        ;; same crash
+   ```
+3. **Parameter limit is off by one (bug, issue #25):** a lambda with exactly 101 parameters parses without error; the limit only fires from 102. The check runs before appending, so `len == 101` is never seen. Regression guard: `lambda_with_101_params_reports_max_params_error` (currently failing on purpose).
+4. **`def` names are not validated (bug, issue #26):** `(def if 1)`, `(def 5 1)`, and `(def "x" 1)` all parse, silently binding names that can never be looked up.
+5. **No lists or pairs:** there are no cons cells, lists, or sequence data structures beyond function argument lists. Known limitation; out of scope for now.
+6. **No I/O beyond `print` and the REPL:** no file, network, or input operations. Known limitation; out of scope for now.
+7. **No `not` / `cond`:** `if`, `and`, and `or` cover the current needs; `not` can be expressed as `(if x false true)`.
+8. **Multi-form lambda bodies yield no value:** wrap the body in `begin` to return a value from a sequence (see 5.3).
+9. **NaN/Infinity are not literals:** `nan`/`inf` are unbound identifiers; the IEEE edge cases only matter for values produced by future arithmetic.
+10. Some internal invariants use assertions that abort the process instead of reporting errors (e.g. an internal call of a built-in handler with a wrong argument count).

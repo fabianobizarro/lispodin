@@ -6,6 +6,7 @@ import runtime "../../src/functions"
 import interpreter "../../src/interpreter"
 import parser "../../src/parser"
 import scanner "../../src/scanner"
+import "core:math"
 import "core:testing"
 
 // Evaluates a source string end to end: tokenize, parse, then evaluate
@@ -46,6 +47,7 @@ evaluate_source :: proc(
 make_global_env :: proc(e: ^core.RuntimeEnvironment) {
 	env.init(e)
 	runtime.register_runtime_global_functions(e)
+	env.define(e, "pi", core.LiteralValue(f32(math.PI)))
 }
 
 // An unbound name reports Variable_Not_Found.
@@ -479,5 +481,310 @@ def_of_bodyless_lambda_reports_parse_error :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	testing.expect_value(t, parser_err.kind, .Lambda_Body_Expected)
 	testing.expect_value(t, parser_err.message, "Lambda body expected.")
+	testing.expect(t, !has_value)
+}
+
+// ---------------------------------------------------------------------------
+// coverage gaps found in review — arithmetic e2e, aliases, closures, values
+// ---------------------------------------------------------------------------
+
+@(test)
+subtraction_e2e_result :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(- 10 (* 2 3))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 4)
+}
+
+@(test)
+division_e2e_result :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(/ 10 2)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 5)
+}
+
+@(test)
+multiplication_identity_e2e :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(*)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 1)
+}
+
+// (newline) is a value form — the string "\n" — usable anywhere a string fits.
+
+@(test)
+newline_returns_newline_string :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(newline)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, "\n")
+}
+
+// The pi constant, registered alongside the runtime functions.
+
+@(test)
+pi_constant_geometry :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def r 10) (* pi (* r r)))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 314.15927)
+}
+
+// Zero-parameter lambdas parse and call.
+
+@(test)
+zero_param_lambda_call :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def f (lambda () 42)) (f))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 42)
+}
+
+// Lambdas cannot be passed as arguments — arguments must be literal values.
+// Pass them by name instead.
+
+@(test)
+lambda_as_argument_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((lambda (f) 1) (lambda (x) x))", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
+	testing.expect_value(t, runtime_err.message, "Expected a literal value or a lambda call.")
+	delete(runtime_err.message)
+}
+
+// The operator position accepts ANY expression — here a begin whose value
+// is a lambda.
+
+@(test)
+begin_result_as_call_operator :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((begin (lambda (x) (* x x))) 7)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 49)
+}
+
+// define is an alias for def; display is an alias for print.
+
+@(test)
+define_alias_binds_like_def :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (define x 5) x)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 5)
+}
+
+@(test)
+display_alias_returns_no_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(display)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
+	testing.expect(t, !has_value)
+}
+
+// A def rebinds an existing name.
+
+@(test)
+def_rebinds_name :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def x 1) (def x 2) x)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 2)
+}
+
+// Non-escaping closures work: a lambda body reads a variable from the
+// environment where the lambda was created (contrast with issue #23, where
+// a closure ESCAPING through a call result crashes).
+
+@(test)
+lambda_captures_outer_variable :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def y 10) ((lambda (x) (+ x y)) 5))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 15)
+}
+
+// A parameter shadows an outer binding with the same name.
+
+@(test)
+lambda_param_shadows_global :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(begin (def x 1) ((lambda (x) x) 99))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 99)
+}
+
+// Nested immediate calls with capture — the outer call's environment is
+// still alive while the inner call runs (the non-escaping closure case).
+
+@(test)
+nested_call_closures_still_alive :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((lambda (x) ((lambda (y) (+ x y)) 3)) 4)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 7)
+}
+
+// A multi-expression source discards intermediate values (documented in
+// LANGUAGE_SPECS.md section 4 — use begin to sequence with a value).
+
+@(test)
+multi_expression_source_discards_values :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(def x 10)\n(+ x 1)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
+	testing.expect(t, !has_value)
+}
+
+// print (like display) produces no value; (print) with no arguments also
+// prints nothing, keeping the test output clean.
+
+@(test)
+print_returns_no_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(print)", &global_env)
+
+	// assert
+	_, has_value := result.?
+	testing.expect_value(t, err, nil)
 	testing.expect(t, !has_value)
 }

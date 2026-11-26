@@ -20,7 +20,7 @@ Working prototype. Scanner, parser, and evaluator are implemented, along with:
 
 496 unit and end-to-end tests cover every builtin and special form (see `make test`).
 
-Known bug: lambdas *returned from* calls capture a destroyed environment — the classic `make-adder` pattern currently crashes (see `LANGUAGE_SPECS.md` §14).
+Known bugs (all with regression guards or ready-to-add pins): escaping closures crash (#23), `def` of a no-value form panics (#24), the lambda parameter limit is off by one (#25), and `def` names are not validated (#26). See `LANGUAGE_SPECS.md` §14.
 
 ## Language
 
