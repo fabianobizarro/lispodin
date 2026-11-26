@@ -1,9 +1,16 @@
-package comparison_functions
+package runtime_functions
 
-import core "../../core"
+import core "../core"
+
+GREATER_EQUAL_FUNCTION_NAME :: ">="
 
 create_greater_than_equal_function :: proc() -> LambdaFunction {
-	return {arity = -1, call = greater_than_equal, closure = nil}
+	return {
+		name = GREATER_EQUAL_FUNCTION_NAME,
+		arity = -1,
+		call = greater_than_equal,
+		closure = nil,
+	}
 }
 
 greater_than_equal :: proc(

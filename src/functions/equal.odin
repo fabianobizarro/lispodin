@@ -1,9 +1,11 @@
-package comparison_functions
+package runtime_functions
 
-import core "../../core"
+import core "../core"
+
+EQUAL_FUNCTION_NAME :: "="
 
 create_comparison_function :: proc() -> LambdaFunction {
-	return {arity = -1, call = equal, closure = nil}
+	return {name = EQUAL_FUNCTION_NAME, arity = -1, call = equal, closure = nil}
 }
 
 equal :: proc(
@@ -25,6 +27,7 @@ equal :: proc(
 	else {
 		err = core.Runtime_Error {
 			kind    = .LiteralValue_Parsing_Error,
+			token   = EQUAL_FUNCTION_NAME,
 			message = "Unexpected type for LiteralValue",
 		}
 		result = nil

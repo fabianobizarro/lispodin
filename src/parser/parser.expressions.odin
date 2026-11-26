@@ -3,7 +3,6 @@ package parser
 
 import "../core"
 import "core:fmt"
-import "core:math"
 
 MAX_PARAMS_SIZE :: 100
 

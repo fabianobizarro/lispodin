@@ -35,6 +35,7 @@ Runtime_Error_Kind :: enum u32 {
 	Expected_LiteralValue_Type,
 	Division_By_Zero,
 	LiteralValue_Parsing_Error,
+	MathError,
 }
 
 Runtime_Error :: struct {

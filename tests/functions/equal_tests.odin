@@ -1,13 +1,14 @@
-package comparison_functions_test
+package runtime_functions_test
 
-import core "../../../src/core"
-import comparison "../../../src/functions/comp"
+import core "../../src/core"
+import runtime "../../src/functions"
 import "core:math"
 import "core:testing"
 
+// Shared by every file in this package.
 LiteralValue :: core.LiteralValue
-create_comparison_function :: comparison.create_comparison_function
-equal :: comparison.equal
+create_comparison_function :: runtime.create_comparison_function
+equal :: runtime.equal
 
 // ---------------------------------------------------------------------------
 // create_comparison_function

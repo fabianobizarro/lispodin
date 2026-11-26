@@ -2,8 +2,7 @@ package interpreter_tests
 
 import core "../../src/core"
 import env "../../src/environment"
-import comp "../../src/functions/comp"
-import math "../../src/functions/math"
+import runtime "../../src/functions"
 import interpreter "../../src/interpreter"
 import parser "../../src/parser"
 import scanner "../../src/scanner"
@@ -39,22 +38,14 @@ evaluate_source :: proc(
 	return interpreter.evaluate(expressions, e)
 }
 
-// Creates a global environment with the built-in math and comparison
-// functions bound, the same way initialize_global_env does in
+// Creates a global environment with the runtime functions bound via the
+// shared registration proc, the same way initialize_global_env does in
 // src/global_env.odin.
 
 @(private)
 make_global_env :: proc(e: ^core.RuntimeEnvironment) {
 	env.init(e)
-	env.define(e, "+", math.create_sum())
-	env.define(e, "-", math.create_subtraction())
-	env.define(e, "*", math.create_multiplication())
-	env.define(e, "/", math.create_division())
-	env.define(e, "=", comp.create_comparison_function())
-	env.define(e, ">", comp.create_greater_than_function())
-	env.define(e, ">=", comp.create_greater_than_equal_function())
-	env.define(e, "<", comp.create_less_than_function())
-	env.define(e, "<=", comp.create_less_than_equal_function())
+	runtime.register_runtime_global_functions(e)
 }
 
 // An unbound name reports Variable_Not_Found.
@@ -352,6 +343,119 @@ named_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
 	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
 	testing.expect_value(t, runtime_err.token, "lambda_func")
 	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// ---------------------------------------------------------------------------
+// sqrt — the first fixed-arity builtin
+// ---------------------------------------------------------------------------
+
+// Arity is enforced by the call machinery (not the handler). NOTE: the
+// token is empty because the builtin was created without a name — the
+// arity error carries func.name.
+
+@(test)
+sqrt_returns_root :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt 9)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 3)
+}
+
+@(test)
+sqrt_of_nested_call :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt (sqrt 16))", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 2)
+}
+
+// sqrt's own hand-rolled type error (differs from the shared
+// parse_literalvalue message used by the other builtins).
+
+@(test)
+sqrt_string_argument_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt \"a\")", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Expected_LiteralValue_Type)
+	testing.expect_value(t, runtime_err.token, "")
+	testing.expect_value(t, runtime_err.message, "Argument 'a': Expected type NUMBER.")
+	testing.expect(t, !has_value)
+}
+
+@(test)
+sqrt_arity_enforced_by_caller :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt 4 9)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "sqrt")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// Negative input reports the dedicated .MathError kind end to end.
+
+@(test)
+sqrt_negative_argument_reports_math_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(sqrt -1)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .MathError)
+	testing.expect_value(t, runtime_err.token, "sqrt")
+	testing.expect_value(
+		t,
+		runtime_err.message,
+		"Can't calculate the square root of a negative number - -1",
+	)
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }

@@ -1,9 +1,11 @@
-package str_functions
+package runtime_functions
 
-import core "../../core"
+import core "../core"
+
+NEWLINE_FUNCTION_NAME :: "newline"
 
 create_newline :: proc() -> core.LambdaFunction {
-	return {arity = -1, closure = nil, call = new_line}
+	return {name = NEWLINE_FUNCTION_NAME, arity = -1, closure = nil, call = new_line}
 }
 
 @(private)
