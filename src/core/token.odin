@@ -18,6 +18,7 @@ TokenType :: enum {
 	IF,
 	BEGIN,
 	AND,
+	OR,
 	EOF,
 }
 

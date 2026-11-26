@@ -10,6 +10,7 @@ Expression :: union {
 	DefineExpression,
 	BeginExpression,
 	AndExpression,
+	OrExpression,
 }
 
 // 1 2 3 4
@@ -70,5 +71,10 @@ BeginExpression :: struct {
 }
 
 AndExpression :: struct {
+	expressions: []Expression,
+}
+
+
+OrExpression :: struct {
 	expressions: []Expression,
 }

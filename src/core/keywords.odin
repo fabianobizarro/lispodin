@@ -12,4 +12,5 @@ Keywords := map[string]TokenType {
 	"if"      = .IF,
 	"begin"   = .BEGIN,
 	"and"     = .AND,
+	"or"      = .OR,
 }

@@ -43,7 +43,25 @@ evaluate_expression :: proc(
 		return evaluate_begin_expression(kind, e)
 	case core.AndExpression:
 		return evaluate_and_expression(kind, e)
+	case core.OrExpression:
+		return evaluate_or_expression(kind, e)
 	}
+}
+
+evaluate_or_expression :: proc(
+	exp: core.OrExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+
+	for expression in exp.expressions {
+		result = evaluate_expression(expression, e) or_return
+		if truthy(result) do return
+	}
+
+	return
 }
 
 evaluate_and_expression :: proc(

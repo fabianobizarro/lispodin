@@ -3,6 +3,7 @@ package parser
 
 import "../core"
 import "core:fmt"
+import "core:math"
 
 MAX_PARAMS_SIZE :: 100
 
@@ -42,7 +43,24 @@ parse_block :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 	else if match(p, .IF) do return return_parse_if_expression(p)
 	else if match(p, .BEGIN) do return parse_begin_expression(p)
 	else if match(p, .AND) do return parse_and_expression(p)
+	else if match(p, .OR) do return parse_or_expression(p)
 	else do return parse_lambda_call_expression(p)
+}
+
+parse_or_expression :: proc(p: ^Parser) -> (exp: core.OrExpression, err: Error) {
+
+	exps := make([dynamic]Expression)
+
+	for !check(p, .RIGHT_PAREN) {
+		append(&exps, parse_expression(p) or_return)
+	}
+
+	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
+
+	exp.expressions = exps[:]
+	err = nil
+
+	return
 }
 
 parse_and_expression :: proc(p: ^Parser) -> (exp: core.AndExpression, err: Error) {
