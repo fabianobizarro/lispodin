@@ -5,14 +5,20 @@ import core "../core"
 RuntimeEnvironment :: core.RuntimeEnvironment
 Result :: Maybe(Atom)
 
-evaluate :: proc(statements: []Statement, e: ^RuntimeEnvironment) -> (result: Result, err: Error) {
-	assert(len(statements) > 0)
+evaluate :: proc(
+	expressions: []core.Expression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+	assert(len(expressions) > 0)
 
-	if len(statements) == 1 {
-		return evaluate_statement(statements[0], e)
+	if len(expressions) == 1 {
+		return evaluate_expression(expressions[0], e)
 	}
 
-	for s in statements do evaluate_statement(s, e) or_return
+	for exp in expressions do evaluate_expression(exp, e) or_return
 
 	return
 }

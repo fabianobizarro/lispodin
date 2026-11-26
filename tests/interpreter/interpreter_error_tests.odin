@@ -28,15 +28,15 @@ evaluate_source :: proc(
 		return nil, scan_errors[0]
 	}
 
-	statements, parse_errors := parser.parse(tokens)
-	defer delete(statements)
+	expressions, parse_errors := parser.parse(tokens)
+	defer delete(expressions)
 	defer delete(parse_errors)
 
 	if len(parse_errors) > 0 {
 		return nil, parse_errors[0]
 	}
 
-	return interpreter.evaluate(statements, e)
+	return interpreter.evaluate(expressions, e)
 }
 
 // Creates a global environment with the built-in math and comparison
@@ -168,7 +168,7 @@ division_by_zero_single_operand_reports_error :: proc(t: ^testing.T) {
 }
 
 // An inline lambda called with the wrong number of arguments reports
-// Lambda_Arity_Mismatch.
+// Lambda_Arity_Mismatch, tagged "lambda_func" in the token field.
 
 @(test)
 inline_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
@@ -185,12 +185,14 @@ inline_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
 	_, has_value := result.?
 	testing.expect(t, ok)
 	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "lambda_func")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
 	testing.expect(t, !has_value)
 	delete(runtime_err.message)
 }
 
-// A call with no arguments and no bound name reports Lambda_Call_Mismatch
-// instead of indexing an empty argument list.
+// A call with an unbound operator name reports Variable_Not_Found: the
+// operator is evaluated before any call machinery runs.
 
 @(test)
 empty_call_reports_error :: proc(t: ^testing.T) {
@@ -206,17 +208,16 @@ empty_call_reports_error :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Lambda_Call_Mismatch)
+	testing.expect_value(t, runtime_err.kind, .Variable_Not_Found)
 	testing.expect_value(t, runtime_err.token, "x")
-	testing.expect_value(
-		t,
-		runtime_err.message,
-		"First argument of the lambda call must be a lambda declaration.",
-	)
+	testing.expect_value(t, runtime_err.message, "Variable x not found")
 	testing.expect(t, !has_value)
+	delete(runtime_err.message)
 }
 
-// Calling a name bound to a non-lambda value reports Lambda_Call_Mismatch.
+// Calling a name bound to a non-lambda value reports
+// Runtime_Or_Lambda_Expected. The operator's value is no longer echoed in
+// the token (empty string pinned as-is).
 
 @(test)
 calling_a_non_lambda_reports_error :: proc(t: ^testing.T) {
@@ -232,15 +233,38 @@ calling_a_non_lambda_reports_error :: proc(t: ^testing.T) {
 	runtime_err, ok := err.(core.Runtime_Error)
 	_, has_value := result.?
 	testing.expect(t, ok)
-	testing.expect_value(t, runtime_err.kind, .Lambda_Call_Mismatch)
-	testing.expect_value(t, runtime_err.token, "x")
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
+	testing.expect_value(t, runtime_err.token, "")
+	testing.expect_value(t, runtime_err.message, "Unknown Lambda declaration")
+	testing.expect(t, !has_value)
+}
+
+// A call whose operator evaluates to no value (here: a two-argument if
+// with a falsy condition) reports a graceful error instead of crashing.
+// Regression pin: this used to panic before the missing control flow was
+// fixed in evaluate_lamba_call.
+
+@(test)
+call_operator_with_no_value_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("((if false 1) 2)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Runtime_Or_Lambda_Expected)
 	testing.expect_value(
 		t,
 		runtime_err.message,
-		"Can only call lambda functions. x does not seem to be a lambda.",
+		"Expected a variable or lambda definition as the call operator",
 	)
 	testing.expect(t, !has_value)
-	delete(runtime_err.message)
 }
 
 // Control: a valid expression returns the result and no error.
@@ -279,4 +303,77 @@ inline_lambda_call_returns_result :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, nil)
 	testing.expect(t, ok)
 	testing.expect_value(t, value, 1)
+}
+
+// The primary named-lambda flow: bind a lambda with def, then call it by
+// name. Two evaluations against the same environment (REPL-style), since a
+// multi-expression source still discards intermediate values.
+
+@(test)
+named_lambda_def_then_call_returns_value :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	_, def_err := evaluate_source("(def f (lambda (x) (* x x)))", &global_env)
+	testing.expect_value(t, def_err, nil)
+
+	result, err := evaluate_source("(f 7)", &global_env)
+
+	// assert
+	value, ok := result.?.(core.LiteralValue)
+	testing.expect_value(t, err, nil)
+	testing.expect(t, ok)
+	testing.expect_value(t, value, 49)
+}
+
+// Arity mismatch on a named lambda. The token is the uniform "lambda_func"
+// tag for both named and anonymous lambdas (pinned as-is).
+
+@(test)
+named_lambda_arity_mismatch_reports_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	_, def_err := evaluate_source("(def f (lambda (x) x))", &global_env)
+	testing.expect_value(t, def_err, nil)
+
+	result, err := evaluate_source("(f 1 2)", &global_env)
+
+	// assert
+	runtime_err, ok := err.(core.Runtime_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, runtime_err.kind, .Lambda_Arity_Mismatch)
+	testing.expect_value(t, runtime_err.token, "lambda_func")
+	testing.expect_value(t, runtime_err.message, "Expected 1 argument(s) but got 2.")
+	testing.expect(t, !has_value)
+	delete(runtime_err.message)
+}
+
+// A def whose value is a bodyless lambda reports the parse error from the
+// lambda body check.
+
+@(test)
+def_of_bodyless_lambda_reports_parse_error :: proc(t: ^testing.T) {
+	// arrange
+	global_env: core.RuntimeEnvironment
+	make_global_env(&global_env)
+	defer env.destroy(&global_env)
+
+	// act
+	result, err := evaluate_source("(def f (lambda (x)))", &global_env)
+
+	// assert
+	parser_err, ok := err.(core.Parser_Error)
+	_, has_value := result.?
+	testing.expect(t, ok)
+	testing.expect_value(t, parser_err.kind, .Lambda_Body_Expected)
+	testing.expect_value(t, parser_err.message, "Lambda body expected.")
+	testing.expect(t, !has_value)
 }

@@ -4,6 +4,7 @@ package interpreter
 import "../core"
 import env "../environment"
 import "core:fmt"
+import "core:strings"
 
 Error :: core.Error
 Runtime_Error :: core.Runtime_Error
@@ -17,16 +18,20 @@ evaluate_expression :: proc(
 ) {
 
 	switch kind in expression {
-	case LiteralExpression:
+	case core.LiteralExpression:
 		return evaluate_literal(kind)
-	case VariableExpression:
+	case core.VariableExpression:
 		return evaluate_variable(kind, e)
-	case LambdaCallExpression:
+	case core.LambdaCallExpression:
 		return evaluate_lamba_call(kind, e)
-	case LambdaExpression:
+	case core.LambdaExpression:
 		return evaluate_lambda_expression(kind, e)
-	case IfExpression:
+	case core.IfExpression:
 		return evaluate_if_expression(kind, e)
+	case core.PrintExpression:
+		return evaluate_print(kind, e)
+	case core.DefineExpression:
+		return evaluate_define(kind, e)
 	}
 
 	result = nil
@@ -39,7 +44,7 @@ evaluate_expression :: proc(
 
 
 evaluate_if_expression :: proc(
-	exp: IfExpression,
+	exp: core.IfExpression,
 	e: ^RuntimeEnvironment,
 ) -> (
 	result: Result,
@@ -105,59 +110,49 @@ evaluate_lamba_call :: proc(
 	err: Error,
 ) {
 	call_args := call.args
-	func: LambdaFunction
-	ok: bool
-	lambda: LambdaExpression
 
-	// check if the lambda function exists in env and the identifier is valid
-	if env.contains_key(e, call.identifier.lexeme) {
-		raw, _ := env.get(e, call.identifier.lexeme)
-		func, ok = raw.(LambdaFunction)
+	operator := evaluate_expression(call.operator^, e) or_return
+	if _, ok := operator.?; !ok {
+		result = nil
+		err = Runtime_Error {
+			kind    = .Runtime_Or_Lambda_Expected,
+			message = "Expected a variable or lambda definition as the call operator",
+		}
+		return
+	}
 
-		if !ok {
-			err = Runtime_Error {
-				kind    = .Lambda_Call_Mismatch,
-				token   = call.identifier.lexeme,
-				message = fmt.aprintf(
-					"Can only call lambda functions. %s does not seem to be a lambda.",
-					call.identifier.lexeme,
-				),
-			}
-			return
-		}
-	} else {
-		if len(call.args) > 0 {
-			lambda, ok = call.args[0].(LambdaExpression)
-		}
 
-		if ok {
-			func = evaluate_lambda_expression(lambda, e) or_return
-			call_args = call_args[1:] // remove the lambda definition from arguments list
-		} else {
-			err = Runtime_Error {
-				kind    = .Lambda_Call_Mismatch,
-				token   = call.identifier.lexeme,
-				message = "First argument of the lambda call must be a lambda declaration.",
-			}
-			return
+	atom, ok := operator.?
+	if !ok {
+		err = Runtime_Error {
+			kind    = .Unexpected_Expression,
+			message = "Expected a Lambda function. Got nil",
 		}
+		return
+	}
+
+	func, is_lambda := atom.(LambdaFunction)
+	if !is_lambda {
+		err = Runtime_Error {
+			kind    = .Runtime_Or_Lambda_Expected,
+			message = "Unknown Lambda declaration",
+		}
+		return
 	}
 
 	// -1 means the runtime function will validate the params
 	if func.arity >= 0 && i8(len(call_args)) != func.arity {
 		err = Runtime_Error {
 			kind    = .Lambda_Arity_Mismatch,
-			token   = call.identifier.lexeme,
+			token   = func.name,
 			message = fmt.aprintf(
-				"%s: Expected %d arguments but got %d.",
-				call.identifier,
+				"Expected %d argument(s) but got %d.",
 				func.arity,
 				len(call_args),
 			),
 		}
 		return
 	}
-
 
 	args := make([dynamic]LiteralValue)
 	defer delete(args)
@@ -168,7 +163,7 @@ evaluate_lamba_call :: proc(
 			result = nil
 			err = Runtime_Error {
 				kind    = .Runtime_Or_Lambda_Expected,
-				token   = call.identifier.lexeme,
+				token   = core.literal_to_string(a),
 				message = "Expected a literal value or a lambda call.",
 			}
 			return
@@ -178,4 +173,92 @@ evaluate_lamba_call :: proc(
 
 	result, err = func.call(&func, args[:], evaluate)
 	return
+}
+
+evaluate_define :: proc(
+	def: core.DefineExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+
+	identifier := def.name.lexeme
+
+	value := evaluate_expression(def.value^, e) or_return
+
+	if func, is_func := value.?.(LambdaFunction); is_func {
+		if func.name == core.ANONYMOUS_LAMBDA_NAME {
+			func.name = identifier
+		}
+	}
+
+	env.define(e, identifier, Atom(value.?))
+
+	result = nil
+	return
+}
+
+evaluate_print :: proc(
+	print: core.PrintExpression,
+	e: ^RuntimeEnvironment,
+) -> (
+	result: Result,
+	err: Error,
+) {
+
+	builder := strings.builder_make()
+	defer strings.builder_destroy(&builder)
+
+	for s in print.arguments {
+		exp := evaluate_expression(s, e) or_return
+		atom, _ := exp.?
+
+		write_builder(&builder, atom) or_return
+	}
+
+	fmt.print(strings.to_string(builder))
+
+	result = nil
+	return
+}
+
+write_builder :: proc(builder: ^strings.Builder, atom: Maybe(Atom)) -> (err: Error) {
+
+	raw: Atom
+	ok: bool
+	literal: LiteralValue
+
+	raw, ok = atom.?
+	if !ok do return
+
+	literal, ok = raw.(LiteralValue)
+	if !ok {
+		return Runtime_Error {
+			kind = .LiteralValue_Parsing_Error,
+			message = fmt.aprint("Unable to parse literal value for ", atom),
+		}
+	}
+
+	switch v in literal {
+	case f32:
+		strings.write_f32(builder, v, 'f')
+	case string:
+		strings.write_string(builder, unescape(v))
+	case bool:
+		strings.write_string(builder, v ? "true" : "false")
+	}
+
+	return nil
+}
+
+
+unescape :: proc(s: string, allocator := context.allocator) -> string {
+	result := s
+	result, _ = strings.replace_all(result, "\\n", "\n", allocator)
+	result, _ = strings.replace_all(result, "\\t", "\t", allocator)
+	result, _ = strings.replace_all(result, "\\r", "\r", allocator)
+	result, _ = strings.replace_all(result, "\\\\", "\\", allocator)
+
+	return result
 }

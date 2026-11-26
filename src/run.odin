@@ -54,7 +54,7 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 	if debug_flag do display_input(source)
 
 	tokens: []core.Token
-	ast: []core.Statement
+	ast: []core.Expression
 	errors: []core.Error
 	defer delete(errors)
 	defer delete(tokens)
@@ -78,15 +78,24 @@ run :: proc(source: string, e: ^core.RuntimeEnvironment) {
 
 	if debug_flag do display_ast(ast)
 
+	if debug_flag do fmt.println("Evaluation: ")
 	result, error := interpreter.evaluate(ast, e)
 	_, ok := result.?
 
-	if debug_flag do fmt.println("Evaluation: ")
 
 	if error != nil do display_error(error)
-	else if ok do fmt.println(result)
+	else if ok do display_result(result.?)
 }
 
+display_result :: proc(result: core.Atom) {
+
+	switch v in result {
+	case core.LiteralValue:
+		fmt.println(v)
+	case core.LambdaFunction:
+		fmt.printfln("<[lambda function] %s %p>", v.name, v.call)
+	}
+}
 display_input :: proc(source: string) {
 	fmt.println("Input: ", source)
 	fmt.println()
@@ -106,7 +115,7 @@ display_tokens :: proc(tokens: []core.Token) {
 	fmt.println()
 }
 
-display_ast :: proc(ast: []core.Statement) {
+display_ast :: proc(ast: []core.Expression) {
 	fmt.println("AST")
 	for s in ast do fmt.printfln("%#v", s)
 	fmt.println()

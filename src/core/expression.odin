@@ -5,8 +5,9 @@ Expression :: union {
 	VariableExpression,
 	LambdaCallExpression,
 	LambdaExpression,
-	// BeginExpression,
 	IfExpression,
+	PrintExpression,
+	DefineExpression,
 }
 
 // 1 2 3 4
@@ -25,15 +26,17 @@ VariableExpression :: struct {
 // (proc_name arg1 arg2)
 // (+ 1 1)
 LambdaCallExpression :: struct {
-	identifier: Token,
-	args:       []Expression,
+	operator: ^Expression,
+	// identifier: Token,
+	args:     []Expression,
 }
 
 
 // (lamba x y z)
 LambdaExpression :: struct {
+	name:   string,
 	params: []Token,
-	body:   []Statement,
+	body:   []Expression,
 }
 
 // BeginExpression :: struct {
@@ -44,4 +47,17 @@ IfExpression :: struct {
 	condition:   ^Expression,
 	then_branch: ^Expression,
 	else_branch: ^Expression,
+}
+
+// (print x)
+PrintExpression :: struct {
+	token:     Token,
+	arguments: []Expression,
+}
+
+// variable define
+// (def a 1)
+DefineExpression :: struct {
+	name:  Token,
+	value: ^Expression,
 }

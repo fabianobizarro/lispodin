@@ -6,20 +6,41 @@ import "core:fmt"
 
 MAX_PARAMS_SIZE :: 100
 
+Error :: core.Error
+Parser_Error :: core.Parser_Error
+
 Expression :: core.Expression
 LiteralExpression :: core.LiteralExpression
 VariableExpression :: core.VariableExpression
 LambdaCallExpression :: core.LambdaCallExpression
 LambdaExpression :: core.LambdaExpression
 IfExpression :: core.IfExpression
+PrintExpression :: core.PrintExpression
+DefineExpression :: core.DefineExpression
 
+// parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
+//
+// 	if check_next(p, .LAMBDA) do return parse_lambda_expression(p)
+// 	else if check_next(p, .IF) do return return_parse_if_expression(p)
+// 	else if check_next(p, .PRINT) do return parse_print_expression(p)
+// 	else if check_next(p, .DEF) do return parse_define_expression(p)
+// 	else if match(p, .LEFT_PAREN) do return parse_lambda_call_expression(p)
+// 	else if match(p, .IDENTIFIER) do return parse_variable_expression(p)
+// 	else if match(p, .NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression(p)
+//
+// 	exp = {}
+// 	err = Parser_Error {
+// 		kind    = .Unexpected_Expression,
+// 		message = "Unexpected Expression",
+// 	}
+// 	return
+// }
+//
 parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 
-	if match(p, .LAMBDA) do return parse_lambda_expression(p)
-	else if check_next(p, .IF) do return return_parse_if_expression(p)
-	else if match(p, .NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression(p)
+	if match(p, .LEFT_PAREN) do return parse_block(p)
 	else if match(p, .IDENTIFIER) do return parse_variable_expression(p)
-	else if match(p, .LEFT_PAREN) do return parse_lambda_call_expression(p)
+	else if match(p, .NUMBER, .STRING, .TRUE, .FALSE) do return parse_literal_expression(p)
 
 	exp = {}
 	err = Parser_Error {
@@ -29,11 +50,61 @@ parse_expression :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 	return
 }
 
-return_parse_if_expression :: proc(p: ^Parser) -> (exp: IfExpression, err: Error) {
+// block expression -> any epxression embraced by ( )
+parse_block :: proc(p: ^Parser) -> (exp: Expression, err: Error) {
 
-	//if
-	consume(p, .LEFT_PAREN, "Expected '(' at the beginning of the expression") or_return
-	consume(p, .IF, "Expected 'if' keyword at the beginning of the expression") or_return
+	if match(p, .PRINT) do return parse_print_expression(p)
+	else if match(p, .DEF) do return parse_define_expression(p)
+	else if match(p, .LAMBDA) do return parse_lambda_expression(p)
+	else if match(p, .IF) do return return_parse_if_expression(p)
+	// else if match(p, .LEFT_PAREN) do return parse_block(p)
+	// else if match(p, .IDENTIFIER) do return parse_lambda_call_expression(p)
+	return parse_lambda_call_expression(p)
+
+	// exp = {}
+	// err = Parser_Error {
+	// 	kind    = .Unexpected_Block_Expression,
+	// 	message = "Unexpected Block Expression",
+	// }
+	// return
+}
+
+
+parse_define_expression :: proc(p: ^Parser) -> (stmt: DefineExpression, err: Error) {
+	_ = previous(p)
+	name := advance(p)
+	value := parse_expression(p) or_return
+
+	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
+
+	err = nil
+	stmt.name = name
+	stmt.value = new(Expression)
+	stmt.value^ = value
+
+	return
+}
+
+parse_print_expression :: proc(p: ^Parser) -> (stmt: PrintExpression, err: Error) {
+
+	print_token := previous(p)
+	expressions := make([dynamic]Expression)
+
+	for !check(p, .RIGHT_PAREN) && !is_at_end(p) {
+		append(&expressions, parse_expression(p) or_return)
+	}
+
+	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the list") or_return
+
+	err = nil
+	stmt = {
+		token     = print_token,
+		arguments = expressions[:],
+	}
+	return
+}
+
+return_parse_if_expression :: proc(p: ^Parser) -> (exp: IfExpression, err: Error) {
 
 	condition := parse_expression(p) or_return
 	then_branch := parse_expression(p) or_return
@@ -66,7 +137,7 @@ return_parse_if_expression :: proc(p: ^Parser) -> (exp: IfExpression, err: Error
 parse_lambda_expression :: proc(p: ^Parser) -> (exp: LambdaExpression, err: Error) {
 
 	params := make([dynamic]Token)
-	body := make([dynamic]Statement)
+	body := make([dynamic]Expression)
 
 	/**
 	Parsing parameters
@@ -102,12 +173,17 @@ parse_lambda_expression :: proc(p: ^Parser) -> (exp: LambdaExpression, err: Erro
 	}
 
 	for !check(p, .RIGHT_PAREN) {
-		append(&body, parse_statement(p) or_return)
+		append(&body, parse_expression(p) or_return)
 	}
 
 	consume(p, .RIGHT_PAREN, "Expected ')' at the end of the lambda definition") or_return
 
-	return {params = params[:], body = body[:]}, nil
+	exp = {
+		params = params[:],
+		body   = body[:],
+	}
+	err = nil
+	return
 }
 
 parse_variable_expression :: proc(p: ^Parser) -> (exp: VariableExpression, err: Error) {
@@ -129,11 +205,11 @@ parse_literal_expression :: proc(p: ^Parser) -> (exp: LiteralExpression, err: Er
 	return exp, nil
 }
 
-
 parse_lambda_call_expression :: proc(p: ^Parser) -> (exp: LambdaCallExpression, err: Error) {
 
-	identifier := advance(p)
+	op := parse_expression(p) or_return
 
+	// check if operator is not a literal value
 	args := make([dynamic]Expression)
 
 	for !check(p, .RIGHT_PAREN) && !is_at_end(p) {
@@ -142,7 +218,10 @@ parse_lambda_call_expression :: proc(p: ^Parser) -> (exp: LambdaCallExpression, 
 
 	consume(p, .RIGHT_PAREN, "Expected ')'") or_return
 
-	exp = {identifier, args[:]}
+	// exp = {identifier, args[:]}
+	exp.operator = new(Expression)
+	exp.operator^ = op
+	exp.args = args[:]
 	err = nil
 	return
 }
